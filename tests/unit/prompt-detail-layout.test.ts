@@ -16,7 +16,7 @@ const {
 
 const promptDetailCssPath = path.resolve(
     __dirname,
-    '../../app/prompts/[id]/prompt-detail.css'
+    '../../app/ai/prompts/[id]/prompt-detail.css'
 );
 vi.mock('next/image', () => ({
     default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => React.createElement('img', props),
@@ -73,7 +73,7 @@ describe('prompt detail related cards layout', () => {
     });
 
     it('renders an exploration section for internal prompt navigation', async () => {
-        const PromptDetailClient = (await import('@/app/prompts/[id]/PromptDetailClient')).default;
+        const PromptDetailClient = (await import('@/app/ai/prompts/[id]/PromptDetailClient')).default;
         const html = renderToStaticMarkup(
             React.createElement(PromptDetailClient, {
                 images: [],
@@ -90,12 +90,12 @@ describe('prompt detail related cards layout', () => {
                 relatedPrompts: [],
                 explorationLinks: [
                     {
-                        href: '/prompts',
+                        href: '/ai/prompts',
                         title: '浏览更多提示词分类',
                         description: '回到提示词库继续筛选。',
                     },
                     {
-                        href: '/rankings/producthunt',
+                        href: '/ai/rankings/producthunt',
                         title: '查看 ProductHunt 热榜',
                         description: '继续观察最新产品。',
                     },
@@ -109,12 +109,41 @@ describe('prompt detail related cards layout', () => {
     });
 
     it('links prompt exploration back to the filterable prompt list instead of SEO category pages', async () => {
-        const { default: PromptDetailPage } = await import('@/app/prompts/[id]/page');
+        const { default: PromptDetailPage } = await import('@/app/ai/prompts/[id]/page');
         const html = renderToStaticMarkup(await PromptDetailPage({
             params: Promise.resolve({ id: '42' }),
         }));
 
-        expect(html).toContain('href="/prompts?category=gemini-3"');
-        expect(html).not.toContain('href="/prompts/categories/gemini-3"');
+        expect(html).toContain('href="/ai/prompts?category=gemini-3"');
+        expect(html).not.toContain('href="/ai/prompts/categories/gemini-3"');
+    });
+
+    it('does not prebuild DB-backed prompt detail pages during production builds', async () => {
+        const { generateStaticParams } = await import('@/app/ai/prompts/[id]/page');
+
+        await expect(generateStaticParams()).resolves.toEqual([]);
+        expect(mockGetAllPromptIds).not.toHaveBeenCalled();
+    });
+
+    it('returns not found for non-numeric prompt ids without querying the database', async () => {
+        const { default: PromptDetailPage } = await import('@/app/ai/prompts/[id]/page');
+
+        await expect(PromptDetailPage({
+            params: Promise.resolve({ id: 'scenarios' }),
+        })).rejects.toThrow('NEXT_NOT_FOUND');
+
+        expect(mockGetPromptById).not.toHaveBeenCalled();
+        expect(mockGetRelatedPrompts).not.toHaveBeenCalled();
+    });
+
+    it('uses prompt list metadata for non-numeric prompt ids without querying the database', async () => {
+        const { generateMetadata } = await import('@/app/ai/prompts/[id]/page');
+
+        const metadata = await generateMetadata({
+            params: Promise.resolve({ id: 'categories' }),
+        });
+
+        expect(metadata.alternates?.canonical?.toString()).toContain('/ai/prompts');
+        expect(mockGetPromptById).not.toHaveBeenCalled();
     });
 });

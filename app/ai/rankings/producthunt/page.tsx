@@ -1,19 +1,14 @@
 import Link from 'next/link';
-import type { Metadata } from 'next';
 import Image from 'next/image';
-import { buildAbsoluteUrl } from '@/lib/seo/config';
-import { buildRankingMetadata } from '@/lib/seo/metadata';
 import { getProductHuntRankings } from '@/lib/services/ranking-cache';
-import { buildCollectionPageJsonLd, buildItemListJsonLd, JsonLdScript } from '@/lib/seo/schema';
-
-export const metadata: Metadata = buildRankingMetadata({
-    title: 'ProductHunt 每日热榜 — 排行榜',
-    description: '聚合 ProductHunt 全球最热门的新产品与工具，每 2 小时自动更新。',
-    canonicalPath: '/ai/rankings/producthunt',
-});
+import { buildRankingMetadata } from '@/lib/seo/metadata';
 
 export const revalidate = 600;
-const PAGE_URL = buildAbsoluteUrl('/ai/rankings/producthunt');
+export const metadata = buildRankingMetadata(
+    '/ai/rankings/producthunt',
+    'AI 产品热榜：ProductHunt 每日榜单',
+    '查看 ProductHunt 每日热门 AI 产品和工具，追踪新品发布、用户投票和产品化趋势。'
+);
 const INTERNAL_LINKS = [
     {
         href: '/ai/rankings/github',
@@ -21,13 +16,13 @@ const INTERNAL_LINKS = [
         description: '把新产品热度和开源项目趋势放在一起，对比产品化与开发者生态的变化。',
     },
     {
-        href: '/ai/prompts/categories/gemini-3',
-        title: 'Gemini 3 提示词分类',
+        href: '/ai/prompts?category=gemini-3',
+        title: 'Gemini 3 提示词',
         description: '从热榜产品延伸到具体可复用的提示词模板，更快进入实操阶段。',
     },
     {
-        href: '/ai/articles/categories/agents',
-        title: '智能体文章分类',
+        href: '/ai/articles?category=agents',
+        title: '智能体文章',
         description: '从热榜产品回流到系统化内容页，补充背景、方法论和案例。',
     },
 ];
@@ -44,17 +39,9 @@ function sanitizeExternalUrl(url: string | null | undefined): string | null {
 
 export default async function ProductHuntPage() {
     const rankings = await getProductHuntRankings();
-    const itemList = rankings.map((item) => ({
-        name: item.title,
-        url: sanitizeExternalUrl(item.productUrl),
-    }));
 
     return (
         <div className="zone-producthunt">
-            <JsonLdScript data={[
-                buildCollectionPageJsonLd('ProductHunt 每日热榜', '聚合 ProductHunt 全球最热门的新产品与工具。', PAGE_URL),
-                buildItemListJsonLd('ProductHunt 每日热榜', '聚合 ProductHunt 全球最热门的新产品与工具。', PAGE_URL, itemList),
-            ]} />
             <div className="zone-header">
                 <h1 className="zone-title zone-title-ph">
                     <i className="bi bi-rocket-takeoff" /> ProductHunt 每日热榜

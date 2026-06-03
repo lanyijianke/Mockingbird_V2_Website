@@ -1,41 +1,42 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `app/` contains the Next.js App Router UI and route handlers. Key areas include `app/api/` for server endpoints, `app/(auth)/` for auth pages, and content surfaces such as `app/ai/articles/`, `app/prompts/`, and `app/rankings/`.
-- `lib/` holds shared modules: `lib/seo/` for metadata and JSON-LD, `lib/auth/` for session/role helpers, `lib/email/` for Resend mailers, `lib/services/` for content and ranking data, and `lib/jobs/` for cron jobs.
-- `tests/unit/` contains Vitest coverage. `public/` stores static assets and prompt media. `config/` contains static configuration such as categories.
+- `app/` contains the Next.js App Router UI and route handlers: `app/api/`, `app/(auth)/`, `app/ai/articles/`, `app/prompts/`, and `app/rankings/`.
+- `lib/` contains shared TypeScript modules: SEO in `lib/seo/`, auth in `lib/auth/`, email in `lib/email/`, services in `lib/services/`, and cron jobs in `lib/jobs/`.
+- `tests/unit/` contains Vitest coverage. `public/` stores static assets. `config/` stores static settings.
 
 ## Build, Test, and Development Commands
-- `npm run dev` starts the local server on port `5046`.
-- `npm run build` produces the production build and catches App Router/runtime issues.
-- `npm run lint` runs ESLint for TS/Next.js checks.
+- `npm run dev` starts the local Next.js development server on port `5046`.
+- `npm run build` creates a production build and catches App Router/runtime issues.
+- `npm run lint` runs ESLint for TypeScript and Next.js checks.
 - `npm test` runs the full Vitest suite once.
-- `npm test -- tests/unit/auth-routes.test.ts` runs a focused test file during iteration.
+- `npm test -- tests/unit/auth-routes.test.ts` runs one test file.
 
 ## Coding Style & Naming Conventions
-- Use TypeScript throughout. Keep `runtime = 'nodejs'` on API routes that touch MySQL or other Node-only dependencies.
-- Follow existing style: 4-space indentation in `lib/` and route handlers, 2-space indentation in many React components; preserve the surrounding file’s style instead of reformatting unrelated code.
-- Prefer descriptive PascalCase for React components, camelCase for helpers, and kebab-free route filenames (`route.ts`, `page.tsx`, `layout.tsx`).
-- Reuse centralized config (`lib/site-config.ts`, `lib/seo/config.ts`) instead of hardcoding brand names, URLs, or callback origins.
+- Use TypeScript throughout.
+- Preserve surrounding indentation: 4 spaces in many `lib/` files and route handlers, 2 spaces in many React components.
+- Keep `runtime = 'nodejs'` on API routes using MySQL or Node-only dependencies.
+- Use PascalCase for React components, camelCase for helpers, and App Router filenames such as `page.tsx`, `layout.tsx`, and `route.ts`.
+- Reuse `lib/site-config.ts` and `lib/seo/config.ts` instead of hardcoding brand names, URLs, or callback origins.
 
 ## Testing Guidelines
-- Framework: Vitest (`tests/**/*.test.ts`).
-- Add regression tests for behavior changes, especially auth, SEO metadata, sitemap output, and route handlers.
-- Prefer route-level tests for API behavior and keep temporary DB state isolated with per-test MySQL databases.
+- Tests use Vitest and follow the `tests/**/*.test.ts` pattern.
+- Add regression tests for behavior changes, especially auth, SEO, sitemap output, and route handlers.
+- Prefer route-level tests for API behavior. Isolate DB-backed tests with per-test MySQL databases.
 
 ## Commit & Pull Request Guidelines
-- Follow the repository’s existing conventional style: `feat: ...`, `fix: ...`, `chore: ...`, `docs: ...`, `refactor: ...`.
+- Follow the existing conventional commit style: `feat: ...`, `fix: ...`, `chore: ...`, `docs: ...`, or `refactor: ...`.
 - Keep commits scoped to one concern.
-- PRs should summarize user-facing impact, config/env changes, and exact verification run (`npm test`, `npm run lint`, `npm run build`). Include screenshots for UI/email template changes when relevant.
+- PRs should summarize user-facing impact, config changes, and verification run, such as `npm test`, `npm run lint`, and `npm run build`.
+- Include screenshots for UI changes.
 
 ## CSS Architecture & Styling
-- **`app/globals.css`** (~230 lines) contains only site-wide primitives: CSS custom properties, reset, `.glass` / `.glass-card`, `.site-footer`, scrollbar, shared animations, and toast. **Never add feature-specific styles here.**
-- Feature CSS lives in `app/_styles/` (shared across subsites) or co-located with the feature (e.g., `app/academy/narratives/narratives.css`).
-- Each feature's CSS is imported only in its own layout or page, so styles from one route tree cannot affect another.
-- New pages must create their own CSS file and import it at the page or layout level.
-- Historical context: mixing all CSS in `globals.css` once caused `.article-reader { display: none }` from academy to hide the new article reader on a completely unrelated page. The current isolation prevents this class of bug.
+- Keep `app/globals.css` limited to site-wide primitives: custom properties, reset, shared utilities, footer, scrollbar, animations, and toast.
+- Do not add feature-specific styles to `app/globals.css`.
+- Put feature CSS in `app/_styles/` or co-locate it with the feature. Import it only from that feature’s page or layout.
 
 ## Security & Configuration Tips
-- Copy `.env.example` to `.env.local`; never commit secrets.
-- Treat `SITE_URL`, OAuth credentials, admin tokens, and Resend sender settings as environment-owned values.
-- Use `KNOWLEDGE_ADMIN_TOKEN`/`ADMIN_API_TOKEN` for protected job endpoints and verify that new external links or absolute URLs go through existing sanitization/config helpers.
+- Copy `.env.example` to `.env.local` for local development, and never commit secrets.
+- Treat `SITE_URL`, OAuth credentials, admin tokens, and Resend settings as environment-owned.
+- Use `KNOWLEDGE_ADMIN_TOKEN` or `ADMIN_API_TOKEN` for protected job endpoints.
+- Route external links and absolute URLs through existing sanitization and config helpers.

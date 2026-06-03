@@ -1,18 +1,17 @@
 import { ToastProvider } from '@/app/ToastContext';
 import { AuthModalProvider } from '@/app/AuthModalContext';
 import SiteNav from './SiteNav';
-import { buildRootMetadata } from '@/lib/seo/metadata';
-import { buildWebSiteJsonLd, JsonLdScript } from '@/lib/seo/schema';
+import SiteFooter from './SiteFooter';
+import { buildPageMetadata } from '@/lib/seo/metadata';
 import './globals.css';
 import '@/app/_styles/nav.css';
 
-// ════════════════════════════════════════════════════════════════
-// 全局元数据 — Next.js Metadata API
-// https://nextjs.org/docs/app/api-reference/functions/generate-metadata
-// ════════════════════════════════════════════════════════════════
-
 export const runtime = 'nodejs';
-export const metadata = buildRootMetadata();
+export const metadata = buildPageMetadata({
+  title: '知更鸟 AI 知识库',
+  description: '知更鸟 AI 知识库提供 AI 教程、深度文章、提示词模板和工具榜单。',
+  path: '/',
+});
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -32,9 +31,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
           </div>
         </main>
+        <SiteFooter />
 
-        {/* ═══ WebSite JSON-LD (全局结构化数据) ═══ */}
-        <JsonLdScript data={buildWebSiteJsonLd()} />
         </AuthModalProvider>
         </ToastProvider>
       </body>

@@ -1,8 +1,8 @@
 import { CacheManager } from './manager';
 import { MemoryCacheStore } from './memory-store';
 
-let store = new MemoryCacheStore();
-let manager = new CacheManager(store);
+const store = new MemoryCacheStore();
+const manager = new CacheManager(store);
 
 export function getCacheManager(): CacheManager {
     return manager;

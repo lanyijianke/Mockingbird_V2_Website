@@ -1,26 +1,13 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import '@/app/_styles/brand-home.css';
-import { buildAbsoluteUrl, getSiteSeoConfig } from '@/lib/seo/config';
-import { buildHomePageMetadata } from '@/lib/seo/metadata';
-import { buildOrganizationJsonLd, buildWebPageJsonLd, JsonLdScript } from '@/lib/seo/schema';
+import { getSiteBrandConfig } from '@/lib/site-config';
 import BinaryRainBackground from './BinaryRainBackground';
 
 export const runtime = 'nodejs';
 export const revalidate = 300;
 
-const SITE_URL = buildAbsoluteUrl('/');
-const SITE_CONFIG = getSiteSeoConfig();
-
-export const metadata = buildHomePageMetadata();
-
-const BRAND_SEO = {
-    webPageJsonLd: buildWebPageJsonLd(
-        SITE_CONFIG.homeTitle,
-        SITE_CONFIG.homeDescription,
-        SITE_URL,
-    ),
-};
+const SITE_CONFIG = getSiteBrandConfig();
 
 const TEAM_MEMBERS = [
     {
@@ -72,11 +59,6 @@ export default function BrandHomePage() {
 
     return (
         <>
-            <JsonLdScript data={[
-                buildOrganizationJsonLd(),
-                BRAND_SEO.webPageJsonLd,
-            ]} />
-
             {/* ═══ Full-viewport Hero ═══ */}
             <section className="brand-hero">
                 <BinaryRainBackground />

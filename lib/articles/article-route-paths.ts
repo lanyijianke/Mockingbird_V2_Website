@@ -2,8 +2,8 @@ export function getArticleListPath(site: string): string {
     return `/${site}/articles`;
 }
 
-export function getArticleCategoryLandingPath(site: string, category: string): string {
-    return `${getArticleListPath(site)}/categories/${category}`;
+export function getArticleCategoryFilterPath(site: string, category: string): string {
+    return `${getArticleListPath(site)}?category=${encodeURIComponent(category)}`;
 }
 
 export function getArticleDetailPath(site: string, slug: string): string {

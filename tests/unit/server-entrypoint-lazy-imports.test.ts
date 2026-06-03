@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('next/image', async () => {
@@ -11,7 +12,7 @@ vi.mock('next/link', async () => {
     const React = await import('react');
     return {
         default: ({ href, children, ...props }: Record<string, unknown>) =>
-            React.createElement('a', { href, ...props }, children as any),
+            React.createElement('a', { href, ...props }, children as ReactNode),
     };
 });
 
@@ -176,7 +177,7 @@ describe('server entrypoint lazy imports', () => {
             };
         });
 
-        const pageModule = await import('@/app/prompts/page');
+        const pageModule = await import('@/app/ai/prompts/page');
 
         expect(state.promptServiceImported).toBe(0);
 

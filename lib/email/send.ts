@@ -1,11 +1,11 @@
 import { Resend } from 'resend';
-import { buildAbsoluteUrl, getSiteSeoConfig } from '@/lib/seo/config';
+import { buildAbsoluteUrl, getSiteBrandConfig } from '@/lib/site-config';
 
 // ════════════════════════════════════════════════════════════════
 // 邮件发送 — 基于 Resend
 // ════════════════════════════════════════════════════════════════
 
-const RESEND_FROM_NAME = process.env.RESEND_FROM_NAME || getSiteSeoConfig().brandName;
+const RESEND_FROM_NAME = process.env.RESEND_FROM_NAME || getSiteBrandConfig().brandName;
 const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
 const EMAIL_BG = '#000000';
 const EMAIL_CARD_BG = '#111111';
@@ -49,7 +49,7 @@ function buildEmailHtml(options: EmailTemplateOptions): string {
             <div style="max-width:560px;margin:0 auto;padding:32px 20px 48px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;">
                 <div style="padding:0 4px 16px;">
                     <div style="font-family:Georgia,'Times New Roman','Noto Serif SC',serif;font-size:28px;line-height:1.2;font-weight:700;letter-spacing:0.08em;color:${EMAIL_TEXT};">
-                        ${getSiteSeoConfig().brandName}
+                        ${getSiteBrandConfig().brandName}
                     </div>
                     <div style="margin-top:10px;width:72px;height:2px;background:${EMAIL_ACCENT};"></div>
                 </div>
@@ -107,7 +107,7 @@ export async function sendVerificationEmail(
     try {
         const resend = getResendClient();
         const verifyUrl = buildAbsoluteUrl(`/verify-email?token=${encodeURIComponent(token)}`);
-        const { brandName } = getSiteSeoConfig();
+        const { brandName } = getSiteBrandConfig();
 
         const { error } = await resend.emails.send({
             from: getSenderAddress(),
@@ -143,7 +143,7 @@ export async function sendPasswordResetEmail(
     try {
         const resend = getResendClient();
         const resetUrl = buildAbsoluteUrl(`/reset-password?token=${encodeURIComponent(token)}`);
-        const { brandName } = getSiteSeoConfig();
+        const { brandName } = getSiteBrandConfig();
 
         const { error } = await resend.emails.send({
             from: getSenderAddress(),

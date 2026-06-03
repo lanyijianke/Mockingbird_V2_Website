@@ -1,23 +1,11 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import type { Metadata } from 'next';
 import { getArticleDetailPath, getArticleListPath } from '@/lib/articles/article-route-paths';
-import { buildAbsoluteUrl, getSiteSeoConfig } from '@/lib/seo/config';
-import { buildArticlesListMetadata } from '@/lib/seo/metadata';
-import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd, JsonLdScript } from '@/lib/seo/schema';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const SITE_CONFIG = getSiteSeoConfig();
-const SITE_URL = SITE_CONFIG.siteUrl;
 const LIST_PATH = getArticleListPath('finance');
-
-export const metadata: Metadata = buildArticlesListMetadata({
-    title: '金融',
-    description: `浏览${SITE_CONFIG.siteName}的金融文章合集 — 宏观研究、市场分析与策略文章`,
-    canonicalPath: '/finance',
-});
 
 export default async function FinanceHomePage() {
     const { getTopArticles, getArticleCategories, getTotalCount } =
@@ -31,18 +19,6 @@ export default async function FinanceHomePage() {
 
     return (
         <div className="articles-page">
-            <JsonLdScript data={[
-                buildBreadcrumbJsonLd([
-                    { name: '首页', url: SITE_URL },
-                    { name: '金融', url: `${SITE_URL}/finance` },
-                ]),
-                buildCollectionPageJsonLd(
-                    '金融',
-                    `浏览${SITE_CONFIG.siteName}的全部金融文章`,
-                    `${SITE_URL}/finance`,
-                ),
-            ]} />
-
             {/* Header */}
             <header className="editorial-header">
                 <div className="editorial-stats">

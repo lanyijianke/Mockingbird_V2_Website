@@ -1,18 +1,13 @@
 import Link from 'next/link';
-import type { Metadata } from 'next';
-import { buildAbsoluteUrl } from '@/lib/seo/config';
-import { buildRankingMetadata } from '@/lib/seo/metadata';
 import { getSkillsShRankings } from '@/lib/services/ranking-cache';
-import { buildCollectionPageJsonLd, buildItemListJsonLd, JsonLdScript } from '@/lib/seo/schema';
-
-export const metadata: Metadata = buildRankingMetadata({
-    title: 'Skills Hot — 排行榜',
-    description: '当下最火热的 AI 技能排行，发现社区最受欢迎的工具。',
-    canonicalPath: '/ai/rankings/skills-hot',
-});
+import { buildRankingMetadata } from '@/lib/seo/metadata';
 
 export const revalidate = 600;
-const PAGE_URL = buildAbsoluteUrl('/ai/rankings/skills-hot');
+export const metadata = buildRankingMetadata(
+    '/ai/rankings/skills-hot',
+    'AI 热门技能榜',
+    '查看 Skills.sh Hot 中当下最热门的 AI 技能、工具和项目，快速发现社区正在集中尝试的方向。'
+);
 const INTERNAL_LINKS = [
     {
         href: '/ai/rankings/skills-trending',
@@ -20,13 +15,13 @@ const INTERNAL_LINKS = [
         description: '从爆发热度切回持续趋势，判断哪些技能正在形成稳定关注。',
     },
     {
-        href: '/ai/prompts/categories/gemini-3',
-        title: 'Gemini 3 提示词分类',
+        href: '/ai/prompts?category=gemini-3',
+        title: 'Gemini 3 提示词',
         description: '把热门技能和提示词模板联动起来，快速验证可复用的实操路径。',
     },
     {
-        href: '/ai/articles/categories/agents',
-        title: '智能体文章分类',
+        href: '/ai/articles?category=agents',
+        title: '智能体文章',
         description: '把热门技能和系统化文章结合起来，快速补齐背景与方法论。',
     },
 ];
@@ -43,17 +38,9 @@ function sanitizeExternalUrl(url: string | null | undefined): string | null {
 
 export default async function SkillsHotPage() {
     const rankings = await getSkillsShRankings('hot');
-    const itemList = rankings.map((item) => ({
-        name: item.skillName,
-        url: sanitizeExternalUrl(item.skillUrl),
-    }));
 
     return (
         <div className="zone-skills">
-            <JsonLdScript data={[
-                buildCollectionPageJsonLd('Skills.sh Hot 排行榜', '当下最火热的 AI 技能排行。', PAGE_URL),
-                buildItemListJsonLd('Skills.sh Hot 排行榜', '当下最火热的 AI 技能排行。', PAGE_URL, itemList),
-            ]} />
             <div className="zone-header">
                 <h1 className="zone-title zone-title-hot">
                     <i className="bi bi-lightning-charge" /> Skills.sh Hot

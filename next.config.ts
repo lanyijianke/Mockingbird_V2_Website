@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       // Console API 提供的封面图片
-      { protocol: 'https', hostname: 'aigcclub.com.cn' },
+      { protocol: 'https', hostname: 'zgnknowledge.online' },
       ...(consoleImagePattern ? [consoleImagePattern] : []),
       // 常见外部图床 (GitHub / 微信公众号等)
       { protocol: 'https', hostname: '*.githubusercontent.com' },

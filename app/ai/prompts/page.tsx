@@ -1,17 +1,12 @@
 import Link from 'next/link';
-import type { Metadata } from 'next';
-import { getSubcategories, getCategoryName } from '@/lib/categories';
-import { getSiteSeoConfig } from '@/lib/seo/config';
-import { buildPromptsListMetadata } from '@/lib/seo/metadata';
-import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd, JsonLdScript } from '@/lib/seo/schema';
+import { getSubcategories } from '@/lib/categories';
+import { buildPromptsMetadata } from '@/lib/seo/metadata';
 import PromptInfiniteGallery from './PromptInfiniteGallery';
 import { buildPromptGalleryResetKey } from './infinite-gallery-utils';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const SITE_CONFIG = getSiteSeoConfig();
-const SITE_URL = SITE_CONFIG.siteUrl;
 const PROMPT_CATEGORY_CODES = new Set(getSubcategories('multimodal-prompts').map((item) => item.code));
 const INTERNAL_LINKS = [
     {
@@ -47,33 +42,14 @@ function normalizeSearchQuery(rawQuery?: string): string | undefined {
     return trimmed.slice(0, 200);
 }
 
-function buildPromptsCanonicalPath(page: number, category?: string): string {
-    const parts: string[] = [];
-    if (category) parts.push(`category=${encodeURIComponent(category)}`);
-    if (page > 1) parts.push(`page=${page}`);
-    return parts.length > 0 ? `/ai/prompts?${parts.join('&')}` : '/ai/prompts';
-}
-
 export async function generateMetadata({
     searchParams,
 }: {
     searchParams: Promise<{ page?: string; category?: string; q?: string }>;
-}): Promise<Metadata> {
+}) {
     const params = await searchParams;
-    const page = normalizePage(params.page);
-    const category = normalizeCategory(params.category);
-    const q = normalizeSearchQuery(params.q);
-    const canonicalPath = buildPromptsCanonicalPath(page, category);
-
-    let title = '提示词库';
-    if (category) title = `${getCategoryName(category)} 提示词`;
-    if (q) title = `搜索「${q}」`;
-
-    return buildPromptsListMetadata({
-        title,
-        description: `浏览${SITE_CONFIG.siteName}的 AI 提示词精选 — ${title}`,
-        canonicalPath,
-        searchQuery: q,
+    return buildPromptsMetadata({
+        hasFilters: Boolean(params.page || params.category || params.q),
     });
 }
 
@@ -87,23 +63,12 @@ export default async function PromptsPage({
     const page = normalizePage(params.page);
     const category = normalizeCategory(params.category);
     const q = normalizeSearchQuery(params.q);
-    const canonicalPath = buildPromptsCanonicalPath(page, category);
-
     const result = await getPagedPrompts(page, 20, category, q);
     // 多模态提示词子类
     const promptCategories = getSubcategories('multimodal-prompts');
 
     return (
         <div className="prompts-page">
-            {/* SEO: BreadcrumbList + CollectionPage JSON-LD */}
-            <JsonLdScript data={[
-                buildBreadcrumbJsonLd([
-                    { name: '首页', url: SITE_URL },
-                    { name: '提示词库', url: `${SITE_URL}${canonicalPath}` },
-                ]),
-                buildCollectionPageJsonLd('提示词库', `浏览${SITE_CONFIG.siteName}的全部 AI 提示词精选`, `${SITE_URL}${canonicalPath}`),
-            ]} />
-
             {/* 粘性搜索栏 */}
             <div className="prompts-sticky-header">
                 <form method="get" action="/ai/prompts" className="prompts-search-bar">

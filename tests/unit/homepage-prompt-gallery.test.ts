@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const globalsCssPath = path.resolve(
     __dirname,
-    '../../app/globals.css'
+    '../../app/_styles/editorial.css'
 );
 
 const {
@@ -123,9 +123,17 @@ describe('homepage prompt gallery', () => {
         expect(html).toContain('模型提示词画廊');
         expect(html).toContain('Gemini 最新提示词');
         expect(html).toContain('GPT Image 2 最新提示词');
-        expect(html).toContain('href="/prompts?category=gemini-3"');
-        expect(html).toContain('href="/prompts?category=gpt-image-2"');
-        expect(html).not.toContain('/prompts/categories/');
+        expect(html).toContain('href="/ai/prompts?category=gemini-3"');
+        expect(html).toContain('href="/ai/prompts?category=gpt-image-2"');
+        expect(html).not.toContain('/ai/prompts/categories/');
+    });
+
+    it('forces runtime rendering so mounted article sources are available in Docker', async () => {
+        const homeRoute = await import('@/app/page');
+        const aiRoute = await import('@/app/ai/page');
+
+        expect(homeRoute.dynamic).toBe('force-dynamic');
+        expect(aiRoute.dynamic).toBe('force-dynamic');
     });
 
     it('prioritizes GPT Image 2 before older model sections on the homepage', async () => {
@@ -139,7 +147,7 @@ describe('homepage prompt gallery', () => {
 
     it('keeps the desktop hero article as the first mobile editorial item', () => {
         const css = fs.readFileSync(globalsCssPath, 'utf-8');
-        const mobileResponsiveBlock = css.match(/@media \(max-width: 768px\) \{[\s\S]*?\/\* ═══ Nav Mobile ═══ \*\//);
+        const mobileResponsiveBlock = css.match(/@media \(max-width: 768px\) \{[\s\S]*?\.category-group-list\s*\{[\s\S]*?\}\s*\}/);
         const editorialCenterBlock = mobileResponsiveBlock?.[0].match(/\.editorial-center\s*\{[\s\S]*?\}/);
 
         expect(editorialCenterBlock?.[0]).toContain('order: -1;');

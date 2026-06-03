@@ -1,0 +1,247 @@
+.about-page {
+  width: min(960px, 100%);
+  margin: 0 auto;
+  padding: 1.5rem 0 5rem;
+}
+
+.about-hero {
+  display: grid;
+  gap: 0;
+}
+
+.about-hero-banner {
+  position: relative;
+  min-height: 280px;
+  border-radius: 18px 18px 0 0;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.about-hero-banner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(10, 12, 16, 0.06) 0%, rgba(10, 12, 16, 0.2) 100%);
+}
+
+.about-hero-banner-image {
+  object-fit: cover;
+}
+
+.about-hero-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+  padding: 1.25rem 2rem 2rem;
+  position: relative;
+  z-index: 1;
+}
+
+.about-avatar-wrap {
+  width: 112px;
+  height: 112px;
+  margin-top: -4.75rem;
+  border-radius: 999px;
+  border: 4px solid var(--bg-primary, #0d1117);
+  overflow: hidden;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.24);
+  background: rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.about-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.about-identity {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.about-eyebrow,
+.about-story-kicker {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary, rgba(255, 255, 255, 0.58));
+}
+
+.about-name {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 3vw, 2.8rem);
+  line-height: 1.05;
+  color: var(--text-main);
+}
+
+.about-handle {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--text-muted);
+}
+
+.about-bio {
+  margin: 0.45rem 0 0;
+  max-width: 44rem;
+  font-size: 1rem;
+  line-height: 1.8;
+  color: var(--text-secondary);
+}
+
+.about-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 0.9rem;
+}
+
+.about-x-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 44px;
+  padding: 0 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-main);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.about-x-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
+}
+
+.about-x-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.about-story {
+  display: grid;
+  gap: 1rem;
+  padding: 2.25rem 2rem 0;
+}
+
+.about-story-header {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.about-story-title {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.25;
+  color: var(--text-main);
+}
+
+.about-story-body {
+  display: grid;
+  gap: 1rem;
+  max-width: 48rem;
+}
+
+.about-story-paragraph {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.9;
+  color: var(--text-secondary);
+}
+
+.about-back {
+  padding-top: 0.25rem;
+}
+
+.about-back a {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.about-back a:hover {
+  color: var(--text-main);
+}
+
+@media (max-width: 900px) {
+  .about-page {
+    padding-top: 1rem;
+  }
+
+  .about-hero-banner {
+    min-height: 240px;
+    border-radius: 14px 14px 0 0;
+  }
+
+  .about-hero-card {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 1rem 1.25rem 1.5rem;
+  }
+
+  .about-identity {
+    padding-top: 0;
+  }
+
+  .about-actions {
+    padding-bottom: 0;
+  }
+
+  .about-story {
+    padding: 1.75rem 1.25rem 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .about-page {
+    padding-top: 0;
+  }
+
+  .about-hero-banner {
+    min-height: 148px;
+    border-radius: 0;
+    margin-inline: -1rem;
+    background: #f2f2ef;
+  }
+
+  .about-hero-banner-image {
+    object-fit: contain;
+  }
+
+  .about-hero-card {
+    padding: 0 0 1.25rem;
+  }
+
+  .about-avatar-wrap {
+    width: 96px;
+    height: 96px;
+    margin-top: -3.5rem;
+    margin-left: 1rem;
+  }
+
+  .about-identity,
+  .about-actions,
+  .about-story {
+    padding-inline: 1rem;
+  }
+
+  .about-actions {
+    padding-bottom: 0;
+  }
+
+  .about-x-link {
+    width: 100%;
+    justify-content: center;
+  }
+}

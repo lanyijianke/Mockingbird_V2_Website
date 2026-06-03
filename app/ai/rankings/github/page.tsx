@@ -1,18 +1,13 @@
 import Link from 'next/link';
-import type { Metadata } from 'next';
-import { buildAbsoluteUrl } from '@/lib/seo/config';
-import { buildRankingMetadata } from '@/lib/seo/metadata';
 import { getGitHubTrendings } from '@/lib/services/ranking-cache';
-import { buildCollectionPageJsonLd, buildItemListJsonLd, JsonLdScript } from '@/lib/seo/schema';
-
-export const metadata: Metadata = buildRankingMetadata({
-    title: 'GitHub Trending — 排行榜',
-    description: '追踪 GitHub 全球最热门的开源项目，每 2 小时自动更新。',
-    canonicalPath: '/ai/rankings/github',
-});
+import { buildRankingMetadata } from '@/lib/seo/metadata';
 
 export const revalidate = 600;
-const PAGE_URL = buildAbsoluteUrl('/ai/rankings/github');
+export const metadata = buildRankingMetadata(
+    '/ai/rankings/github',
+    'AI 开源项目榜单：GitHub Trending',
+    '查看 GitHub Trending 上正在升温的 AI 开源项目，追踪开发者生态中的工具、框架和产品信号。'
+);
 const INTERNAL_LINKS = [
     {
         href: '/ai/rankings/producthunt',
@@ -20,13 +15,13 @@ const INTERNAL_LINKS = [
         description: '对照产品热度和开源趋势，观察哪些项目正在从代码走向产品化。',
     },
     {
-        href: '/ai/prompts/categories/gemini-3',
-        title: 'Gemini 3 提示词分类',
+        href: '/ai/prompts?category=gemini-3',
+        title: 'Gemini 3 提示词',
         description: '继续结合多模态提示词模板，验证这些热门项目的实际可用场景。',
     },
     {
-        href: '/ai/articles/categories/tech-practice',
-        title: '技术实战文章分类',
+        href: '/ai/articles?category=tech-practice',
+        title: '技术实战文章',
         description: '把排行榜信号和文章中的方法论、案例拆解放到一起阅读。',
     },
 ];
@@ -57,17 +52,9 @@ const LANGUAGE_COLORS: Record<string, string> = {
 
 export default async function GitHubTrendingPage() {
     const trendings = await getGitHubTrendings();
-    const itemList = trendings.map((item) => ({
-        name: item.repoFullName,
-        url: sanitizeExternalUrl(item.repoUrl || `https://github.com/${item.repoFullName}`),
-    }));
 
     return (
         <div className="zone-github">
-            <JsonLdScript data={[
-                buildCollectionPageJsonLd('GitHub Trending 排行榜', '追踪 GitHub 全球最热门的开源项目。', PAGE_URL),
-                buildItemListJsonLd('GitHub Trending 排行榜', '追踪 GitHub 全球最热门的开源项目。', PAGE_URL, itemList),
-            ]} />
             <div className="zone-header">
                 <h1 className="zone-title zone-title-gh">
                     <i className="bi bi-github" /> GitHub Trending

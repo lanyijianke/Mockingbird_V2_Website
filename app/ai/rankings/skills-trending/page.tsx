@@ -1,18 +1,13 @@
 import Link from 'next/link';
-import type { Metadata } from 'next';
-import { buildAbsoluteUrl } from '@/lib/seo/config';
-import { buildRankingMetadata } from '@/lib/seo/metadata';
 import { getSkillsShRankings } from '@/lib/services/ranking-cache';
-import { buildCollectionPageJsonLd, buildItemListJsonLd, JsonLdScript } from '@/lib/seo/schema';
-
-export const metadata: Metadata = buildRankingMetadata({
-    title: 'Skills Trending — 排行榜',
-    description: '最受社区关注的 AI 技能与工具，实时追踪趋势变化。',
-    canonicalPath: '/ai/rankings/skills-trending',
-});
+import { buildRankingMetadata } from '@/lib/seo/metadata';
 
 export const revalidate = 600;
-const PAGE_URL = buildAbsoluteUrl('/ai/rankings/skills-trending');
+export const metadata = buildRankingMetadata(
+    '/ai/rankings/skills-trending',
+    'AI 技能趋势榜',
+    '查看 Skills.sh Trending 中持续升温的 AI 技能和工具，识别正在形成稳定关注的工作流方向。'
+);
 const INTERNAL_LINKS = [
     {
         href: '/ai/rankings/skills-hot',
@@ -20,13 +15,13 @@ const INTERNAL_LINKS = [
         description: '对照长期关注度和短期爆发热度，识别哪些技能只是短暂上升，哪些已经进入主流。',
     },
     {
-        href: '/ai/prompts/categories/gemini-3',
-        title: 'Gemini 3 提示词分类',
+        href: '/ai/prompts?category=gemini-3',
+        title: 'Gemini 3 提示词',
         description: '把技能热度和提示词模板结合起来，快速验证是否有真实工作流价值。',
     },
     {
-        href: '/ai/articles/categories/tech-practice',
-        title: '技术实战文章分类',
+        href: '/ai/articles?category=tech-practice',
+        title: '技术实战文章',
         description: '从技能与工具热度回流到系统化文章，补齐方法论和案例。',
     },
 ];
@@ -43,17 +38,9 @@ function sanitizeExternalUrl(url: string | null | undefined): string | null {
 
 export default async function SkillsTrendingPage() {
     const rankings = await getSkillsShRankings('trending');
-    const itemList = rankings.map((item) => ({
-        name: item.skillName,
-        url: sanitizeExternalUrl(item.skillUrl),
-    }));
 
     return (
         <div className="zone-skills">
-            <JsonLdScript data={[
-                buildCollectionPageJsonLd('Skills.sh Trending 排行榜', '最受社区关注的 AI 技能与工具。', PAGE_URL),
-                buildItemListJsonLd('Skills.sh Trending 排行榜', '最受社区关注的 AI 技能与工具。', PAGE_URL, itemList),
-            ]} />
             <div className="zone-header">
                 <h1 className="zone-title zone-title-skills">
                     <i className="bi bi-fire" /> Skills.sh Trending

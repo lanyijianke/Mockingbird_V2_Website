@@ -1,17 +1,19 @@
 import { notFound } from 'next/navigation';
 import {
-    getArticleCategoryLandingPath,
     getArticleDetailPath,
     getArticleListPath,
 } from '@/lib/articles/article-route-paths';
-import type { Metadata } from 'next';
-import { getSiteSeoConfig } from '@/lib/seo/config';
-import { buildArticleDetailMetadata } from '@/lib/seo/metadata';
-import { buildArticleJsonLd, buildBreadcrumbJsonLd, JsonLdScript } from '@/lib/seo/schema';
+import {
+    buildArticleDetailMetadata,
+    buildArticlesMetadata,
+} from '@/lib/seo/metadata';
+import {
+    JsonLdScript,
+    buildArticleSchema,
+} from '@/lib/seo/schema';
+import { buildAbsoluteUrl } from '@/lib/site-config';
 import ArticleReaderClient from '@/app/articles/[slug]/ArticleReaderClient';
 import '@/app/articles/[slug]/article-reader.css';
-
-const SITE_URL = getSiteSeoConfig().siteUrl;
 
 export const runtime = 'nodejs';
 export const revalidate = 3600;
@@ -22,26 +24,19 @@ export async function generateStaticParams() {
     return slugs.map((slug) => ({ slug }));
 }
 
-export async function generateMetadata({
-    params,
-}: {
-    params: Promise<{ slug: string }>;
-}): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
     const { getArticleBySlug } = await import('@/lib/services/article-service');
     const { slug } = await params;
     const article = await getArticleBySlug(slug, { site: 'ai' });
-    if (!article) return { title: '文章未找到' };
 
-    const canonicalPath = getArticleDetailPath('ai', slug);
+    if (!article) {
+        return buildArticlesMetadata();
+    }
 
     return buildArticleDetailMetadata({
         title: article.seoTitle || article.title,
         description: article.seoDescription || article.summary,
-        canonicalPath,
-        keywords: article.seoKeywords || undefined,
-        coverImageUrl: article.coverUrl,
-        createdAt: article.createdAt,
-        updatedAt: article.updatedAt,
+        path: getArticleDetailPath('ai', article.slug),
     });
 }
 
@@ -126,16 +121,17 @@ export default async function AiArticleDetailPage({
         .process(content);
 
     const renderedHtml = String(result).replace(/<img /g, '<img loading="lazy" ');
-    const articleUrl = `${SITE_URL}${getArticleDetailPath('ai', slug)}`;
+    const articleUrl = getArticleDetailPath('ai', slug);
+    const articleShareUrl = buildAbsoluteUrl(articleUrl);
     const explorationLinks = [
         {
-            href: getArticleCategoryLandingPath('ai', article.category),
+            href: `${getArticleListPath('ai')}?category=${encodeURIComponent(article.category)}`,
             title: `更多 ${article.categoryName} 文章`,
-            description: `进入 ${article.categoryName} 分类页，集中浏览同主题文章。`,
+            description: `按 ${article.categoryName} 分类继续浏览同主题文章。`,
         },
         {
-            href: '/ai/prompts/categories/gemini-3',
-            title: '相关提示词分类',
+            href: '/ai/prompts?category=gemini-3',
+            title: '相关提示词',
             description: '从文章切到可直接复用的多模态提示词模板，缩短落地路径。',
         },
         {
@@ -147,23 +143,15 @@ export default async function AiArticleDetailPage({
 
     return (
         <>
-            <JsonLdScript data={[
-                buildArticleJsonLd({
+            <JsonLdScript
+                data={buildArticleSchema({
                     title: article.seoTitle || article.title,
-                    summary: article.seoDescription || article.summary,
-                    url: articleUrl,
-                    coverUrl: article.coverUrl,
-                    createdAt: article.createdAt,
-                    updatedAt: article.updatedAt,
-                    category: article.category,
-                }),
-                buildBreadcrumbJsonLd([
-                    { name: '首页', url: SITE_URL },
-                    { name: 'AI 文章', url: `${SITE_URL}${getArticleListPath('ai')}` },
-                    { name: article.seoTitle || article.title, url: articleUrl },
-                ]),
-            ]} />
-
+                    description: article.seoDescription || article.summary,
+                    path: articleUrl,
+                    datePublished: article.createdAt,
+                    dateModified: article.updatedAt,
+                })}
+            />
             <ArticleReaderClient
                 renderedHtml={renderedHtml}
                 toc={toc}
@@ -172,7 +160,7 @@ export default async function AiArticleDetailPage({
                 dateStr={dateStr}
                 readingMinutes={readingMinutes}
                 summary={article.summary ?? ''}
-                articleUrl={articleUrl}
+                articleUrl={articleShareUrl}
                 backHref={getArticleListPath('ai')}
                 relatedArticles={relatedArticles.map((item) => ({
                     href: getArticleDetailPath('ai', item.slug),

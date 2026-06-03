@@ -1,23 +1,18 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import type { Metadata } from 'next';
 import {
     getArticleDetailPath,
     getArticleListPath,
 } from '@/lib/articles/article-route-paths';
-import { getSiteSeoConfig } from '@/lib/seo/config';
-import { buildArticlesListMetadata } from '@/lib/seo/metadata';
-import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd, JsonLdScript } from '@/lib/seo/schema';
+import { buildArticlesMetadata } from '@/lib/seo/metadata';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const SITE_CONFIG = getSiteSeoConfig();
-const SITE_URL = SITE_CONFIG.siteUrl;
 const INTERNAL_LINKS = [
     {
-        href: '/ai/prompts/categories/gemini-3',
-        title: 'Gemini 3 提示词分类',
+        href: '/ai/prompts?category=gemini-3',
+        title: 'Gemini 3 提示词',
         description: '把文章中的方法论快速落到具体提示词实践，适合继续上手实验。',
     },
     {
@@ -48,37 +43,14 @@ function normalizeSearchQuery(rawQuery?: string): string | undefined {
     return trimmed.slice(0, 200);
 }
 
-function buildArticlesCanonicalPath(page: number, category?: string): string {
-    const parts: string[] = [];
-    if (category) parts.push(`category=${encodeURIComponent(category)}`);
-    if (page > 1) parts.push(`page=${page}`);
-    const listPath = getArticleListPath('ai');
-    return parts.length > 0 ? `${listPath}?${parts.join('&')}` : listPath;
-}
-
 export async function generateMetadata({
     searchParams,
 }: {
     searchParams: Promise<{ page?: string; category?: string; q?: string }>;
-}): Promise<Metadata> {
+}) {
     const params = await searchParams;
-    const page = normalizePage(params.page);
-    const { getArticleCategories } = await import('@/lib/services/article-service');
-    const categories = await getArticleCategories('ai');
-    const categoryCodes = new Set(categories.map((item) => item.code));
-    const category = normalizeCategory(params.category, categoryCodes);
-    const q = normalizeSearchQuery(params.q);
-    const canonicalPath = buildArticlesCanonicalPath(page, category);
-
-    let title = 'AI 文章';
-    if (category) title = `${categories.find((item) => item.code === category)?.name || category} 文章`;
-    if (q) title = `搜索「${q}」`;
-
-    return buildArticlesListMetadata({
-        title,
-        description: `浏览${SITE_CONFIG.siteName}的 AI 文章合集 — ${title}`,
-        canonicalPath,
-        searchQuery: q,
+    return buildArticlesMetadata({
+        hasFilters: Boolean(params.page || params.category || params.q),
     });
 }
 
@@ -94,7 +66,6 @@ export default async function AiArticlesPage({
     const categoryCodes = new Set(articleCategories.map((item) => item.code));
     const category = normalizeCategory(params.category, categoryCodes);
     const q = normalizeSearchQuery(params.q);
-    const canonicalPath = buildArticlesCanonicalPath(page, category);
     const result = await getPagedArticles(page, 10, category, q, { site: 'ai' });
 
     function buildPageUrl(p: number) {
@@ -108,14 +79,6 @@ export default async function AiArticlesPage({
 
     return (
         <div className="articles-page">
-            <JsonLdScript data={[
-                buildBreadcrumbJsonLd([
-                    { name: '首页', url: SITE_URL },
-                    { name: 'AI 文章', url: `${SITE_URL}${canonicalPath}` },
-                ]),
-                buildCollectionPageJsonLd('AI 文章库', `浏览${SITE_CONFIG.siteName}的全部 AI 文章`, `${SITE_URL}${canonicalPath}`),
-            ]} />
-
             <nav className="breadcrumb">
                 <Link href="/" className="crumb-link">
                     <i className="bi bi-house-door" /> 首页

@@ -1,13 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getArticleDetailPath, getArticleListPath } from '@/lib/articles/article-route-paths';
-import type { Metadata } from 'next';
-import { getSiteSeoConfig } from '@/lib/seo/config';
-import { buildArticleDetailMetadata } from '@/lib/seo/metadata';
-import { buildArticleJsonLd, buildBreadcrumbJsonLd, JsonLdScript } from '@/lib/seo/schema';
 import ArticleReaderClient from '@/app/articles/[slug]/ArticleReaderClient';
 import '@/app/articles/[slug]/article-reader.css';
-
-const SITE_URL = getSiteSeoConfig().siteUrl;
 
 export const runtime = 'nodejs';
 export const revalidate = 3600;
@@ -34,29 +28,6 @@ export async function generateStaticParams() {
     const { getAllSlugs } = await import('@/lib/services/article-service');
     const slugs = await getAllSlugs('finance');
     return slugs.map((slug) => ({ slug }));
-}
-
-export async function generateMetadata({
-    params,
-}: {
-    params: Promise<{ slug: string }>;
-}): Promise<Metadata> {
-    const { getArticleBySlug } = await import('@/lib/services/article-service');
-    const { slug } = await params;
-    const article = await getArticleBySlug(slug, { site: 'finance' });
-    if (!article) return { title: '文章未找到' };
-
-    const canonicalPath = getArticleDetailPath('finance', slug);
-
-    return buildArticleDetailMetadata({
-        title: article.seoTitle || article.title,
-        description: article.seoDescription || article.summary,
-        canonicalPath,
-        keywords: article.seoKeywords || undefined,
-        coverImageUrl: article.coverUrl,
-        createdAt: article.createdAt,
-        updatedAt: article.updatedAt,
-    });
 }
 
 interface TocItem {
@@ -140,27 +111,10 @@ export default async function FinanceArticleDetailPage({
         .process(content);
 
     const renderedHtml = String(result).replace(/<img /g, '<img loading="lazy" ');
-    const articleUrl = `${SITE_URL}${getArticleDetailPath('finance', slug)}`;
+    const articleUrl = getArticleDetailPath('finance', slug);
 
     return (
         <>
-            <JsonLdScript data={[
-                buildArticleJsonLd({
-                    title: article.seoTitle || article.title,
-                    summary: article.seoDescription || article.summary,
-                    url: articleUrl,
-                    coverUrl: article.coverUrl,
-                    createdAt: article.createdAt,
-                    updatedAt: article.updatedAt,
-                    category: article.category,
-                }),
-                buildBreadcrumbJsonLd([
-                    { name: '首页', url: SITE_URL },
-                    { name: '金融文章', url: `${SITE_URL}${getArticleListPath('finance')}` },
-                    { name: article.seoTitle || article.title, url: articleUrl },
-                ]),
-            ]} />
-
             <ArticleReaderClient
                 renderedHtml={renderedHtml}
                 toc={toc}

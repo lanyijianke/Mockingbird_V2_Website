@@ -1,34 +1,42 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import NavAuthButton from '@/app/NavAuthButton';
 import { getArticleListPath } from '@/lib/articles/article-route-paths';
-import { getSiteSeoConfig } from '@/lib/seo/config';
 
-const ACADEMY_URL = process.env.NEXT_PUBLIC_ACADEMY_URL || 'http://localhost:5080';
+const NAV_BRAND_NAME = '知更鸟 AI 知识库';
 
 export default function SiteNav() {
   const pathname = usePathname();
-  const { brandName } = getSiteSeoConfig();
 
-  const isBrandHome = pathname === '/';
-  const isAi = pathname.startsWith('/ai');
+  const isRootHome = pathname === '/';
+  const isAbout = pathname.startsWith('/about');
+  const isAi = isRootHome || isAbout || pathname.startsWith('/ai');
   const isFinance = pathname.startsWith('/finance');
 
-  if (isBrandHome) return null;
-
-  const brandHref = isAi ? '/ai' : isFinance ? '/finance' : '/';
+  const brandHref = isAi ? '/' : isFinance ? '/finance' : '/';
 
   return (
     <nav className="top-nav">
-      <div className="nav-left" />
+      <div className="nav-left">
+        <Link href="/about" className="nav-link">关于我</Link>
+      </div>
 
       <div className="nav-center">
         <div className="nav-divider" />
-        <div className="nav-brand-name">
-          <Link href={brandHref}>{brandName}</Link>
-        </div>
+        <Link href={brandHref} className="nav-brand-lockup" aria-label={NAV_BRAND_NAME}>
+          <Image
+            src="/images/logo-nav.png"
+            alt=""
+            width={42}
+            height={42}
+            className="nav-brand-logo"
+            priority
+            unoptimized
+          />
+          <span className="nav-brand-name">{NAV_BRAND_NAME}</span>
+        </Link>
         <div className="nav-divider" />
       </div>
 
@@ -37,10 +45,10 @@ export default function SiteNav() {
         {isAi && (
           <>
             <Link href={getArticleListPath('ai')} className="nav-link">AI文章</Link>
-            <Link href="/ai/prompts" className="nav-link">提示词</Link>
+            <Link href="/ai/prompts" className="nav-link">AI 提示词</Link>
 
             {/* Mobile: plain link */}
-            <Link href="/ai/rankings/topics" className="nav-link nav-mobile-only">
+            <Link href="/ai/rankings/github" className="nav-link nav-mobile-only">
               热榜
             </Link>
 
@@ -68,9 +76,6 @@ export default function SiteNav() {
                 </Link>
               </div>
             </div>
-
-            <a href={ACADEMY_URL} className="nav-link academy-link">学社</a>
-            <NavAuthButton />
           </>
         )}
 
@@ -78,8 +83,6 @@ export default function SiteNav() {
         {isFinance && (
           <>
             <Link href={getArticleListPath('finance')} className="nav-link">金融文章</Link>
-            <a href={ACADEMY_URL} className="nav-link academy-link">学社</a>
-            <NavAuthButton />
           </>
         )}
 
@@ -87,9 +90,6 @@ export default function SiteNav() {
         {!isAi && !isFinance && (
           <>
             <Link href={getArticleListPath('ai')} className="nav-link">AI</Link>
-            <Link href={getArticleListPath('finance')} className="nav-link">金融</Link>
-            <a href={ACADEMY_URL} className="nav-link">学社</a>
-            <NavAuthButton />
           </>
         )}
       </div>

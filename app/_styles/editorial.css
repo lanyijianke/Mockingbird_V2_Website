@@ -10,6 +10,10 @@
   margin-bottom: 2.5rem;
 }
 
+.editorial-header--summary {
+  padding: 2.2rem 0 1.8rem;
+}
+
 .editorial-stats {
   display: flex;
   justify-content: center;
@@ -46,6 +50,24 @@
   color: var(--text-muted);
   margin: 0;
   line-height: 1.6;
+}
+
+.editorial-summary-line {
+  font-family: var(--font-sans);
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: var(--text-muted);
+  margin: 0 auto;
+  max-width: 720px;
+}
+
+.editorial-summary-line strong {
+  font-family: var(--font-serif);
+  font-size: 1.8rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-main);
+  margin: 0 0.28rem;
 }
 
 /* ═══════ Editorial 3-Column Grid ═══════ */
@@ -615,6 +637,15 @@
     font-size: 2rem;
   }
 
+  .editorial-summary-line {
+    font-size: 0.98rem;
+    max-width: 32rem;
+  }
+
+  .editorial-summary-line strong {
+    font-size: 1.55rem;
+  }
+
   .hero-card-title {
     font-size: 1.5rem;
   }
@@ -627,6 +658,18 @@
 
   .editorial-headline {
     font-size: 1.6rem;
+  }
+
+  .editorial-header--summary {
+    padding: 1.8rem 0 1.5rem;
+  }
+
+  .editorial-summary-line {
+    font-size: 0.92rem;
+  }
+
+  .editorial-summary-line strong {
+    font-size: 1.35rem;
   }
 
   .category-group-list {

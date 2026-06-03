@@ -1,42 +1,56 @@
 import { notFound } from 'next/navigation';
 import { getCategoryName } from '@/lib/categories';
-import type { Metadata } from 'next';
-import { getSiteSeoConfig } from '@/lib/seo/config';
-import { buildPromptDetailMetadata } from '@/lib/seo/metadata';
-import { buildPromptInternalLinkGroup, buildRankingInternalLinkGroup } from '@/lib/seo/internal-links';
-import { buildBreadcrumbJsonLd, buildPromptJsonLd, JsonLdScript } from '@/lib/seo/schema';
+import {
+    buildPromptDetailMetadata,
+    buildPromptsMetadata,
+} from '@/lib/seo/metadata';
+import {
+    JsonLdScript,
+    buildCreativeWorkSchema,
+} from '@/lib/seo/schema';
 import PromptDetailClient from './PromptDetailClient';
 import { safeJsonParse } from '../safeJsonParse';
 import './prompt-detail.css';
-
-const SITE_URL = getSiteSeoConfig().siteUrl;
 
 export const runtime = 'nodejs';
 export const revalidate = 3600;
 
 export async function generateStaticParams() {
-    const { getAllPromptIds } = await import('@/lib/services/prompt-service');
-    const ids = await getAllPromptIds();
-    // 只预生成最新 100 个，其余按需生成
-    return ids.slice(0, 100).map((id) => ({ id: String(id) }));
+    return [];
 }
 
-export async function generateMetadata({
-    params,
-}: {
-    params: Promise<{ id: string }>;
-}): Promise<Metadata> {
+function summarizePrompt(prompt: { description?: string | null; content: string }): string {
+    return (prompt.description || prompt.content.slice(0, 150)).trim();
+}
+
+function parsePromptId(id: string): number | null {
+    if (!/^\d+$/.test(id)) {
+        return null;
+    }
+
+    const parsed = Number(id);
+    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
     const { getPromptById } = await import('@/lib/services/prompt-service');
     const { id } = await params;
-    const prompt = await getPromptById(parseInt(id, 10));
-    if (!prompt) return { title: '提示词未找到' };
+    const promptId = parsePromptId(id);
+
+    if (!promptId) {
+        return buildPromptsMetadata();
+    }
+
+    const prompt = await getPromptById(promptId);
+
+    if (!prompt) {
+        return buildPromptsMetadata();
+    }
 
     return buildPromptDetailMetadata({
-        id,
         title: prompt.title,
-        description: prompt.description,
-        content: prompt.content,
-        coverImageUrl: prompt.coverImageUrl,
+        description: summarizePrompt(prompt),
+        path: `/ai/prompts/${prompt.id}`,
     });
 }
 
@@ -47,7 +61,13 @@ export default async function PromptDetailPage({
 }) {
     const { getPromptById, getRelatedPrompts } = await import('@/lib/services/prompt-service');
     const { id } = await params;
-    const prompt = await getPromptById(parseInt(id, 10));
+    const promptId = parsePromptId(id);
+
+    if (!promptId) {
+        notFound();
+    }
+
+    const prompt = await getPromptById(promptId);
     if (!prompt) notFound();
 
     // 获取同分类推荐提示词
@@ -68,55 +88,34 @@ export default async function PromptDetailPage({
         month: 'long',
         day: 'numeric',
     });
-    const promptLinks = buildPromptInternalLinkGroup({
-        categorySlug: prompt.category,
-        categoryLabel: getCategoryName(prompt.category),
-        promptId: prompt.id,
-        promptTitle: prompt.title,
-    });
-    const rankingLinks = buildRankingInternalLinkGroup();
-    const promptDescription = prompt.description || prompt.content.slice(0, 160);
     const promptListCategoryHref = `/ai/prompts?category=${encodeURIComponent(prompt.category)}`;
     const explorationLinks = [
         {
             href: promptListCategoryHref,
-            title: promptLinks.links[1].label,
+            title: `${getCategoryName(prompt.category)} 提示词`,
             description: `回到提示词列表并按 ${getCategoryName(prompt.category)} 筛选，继续浏览同类模板。`,
         },
         {
-            href: '/ai/articles/categories/prompts',
+            href: '/ai/articles?category=prompts',
             title: '提示词相关文章',
             description: '从提示词分类延伸到配套教程、最佳实践和案例分析。',
         },
         {
-            href: rankingLinks.links[1].href,
-            title: rankingLinks.links[1].label,
+            href: '/ai/rankings/producthunt',
+            title: 'ProductHunt 热榜',
             description: '观察正在增长的 AI 产品，再反向寻找适合它们的提示词玩法。',
         },
     ];
 
     return (
         <>
-            {/* SEO: BreadcrumbList JSON-LD */}
-            <JsonLdScript data={[
-                buildPromptJsonLd({
-                    id: prompt.id,
+            <JsonLdScript
+                data={buildCreativeWorkSchema({
                     title: prompt.title,
-                    description: promptDescription,
-                    content: prompt.content,
-                    url: `${SITE_URL}/ai/prompts/${id}`,
-                    coverImageUrl: prompt.coverImageUrl,
-                    category: getCategoryName(prompt.category),
-                    createdAt: prompt.createdAt,
-                    updatedAt: prompt.updatedAt,
-                }),
-                buildBreadcrumbJsonLd([
-                    { name: '首页', url: SITE_URL },
-                    { name: '提示词', url: `${SITE_URL}/ai/prompts` },
-                    { name: prompt.title, url: `${SITE_URL}/ai/prompts/${id}` },
-                ]),
-            ]} />
-
+                    description: summarizePrompt(prompt),
+                    path: `/ai/prompts/${prompt.id}`,
+                })}
+            />
             <PromptDetailClient
                 images={images}
                 content={prompt.content}

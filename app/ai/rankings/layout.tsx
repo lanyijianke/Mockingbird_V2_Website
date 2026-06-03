@@ -1,8 +1,5 @@
 import Link from 'next/link';
 import '@/app/_styles/rankings.css';
-import { buildRankingsLayoutMetadata } from '@/lib/seo/metadata';
-
-export const metadata = buildRankingsLayoutMetadata();
 
 const tabs = [
     { href: '/ai/rankings/github', icon: 'bi-github', label: 'GitHub Trending', color: '#58a6ff' },

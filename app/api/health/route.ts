@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getSiteSeoConfig } from '@/lib/seo/config';
+import { getSiteBrandConfig } from '@/lib/site-config';
 
 export const runtime = 'nodejs';
 
 // GET /api/health — 增强版健康检查
 export async function GET() {
-    const siteConfig = getSiteSeoConfig();
+    const siteConfig = getSiteBrandConfig();
     const [{ queryScalar }, { getTotalCount: getArticleCount }, { getSchedulerStatus }] = await Promise.all([
         import('@/lib/db'),
         import('@/lib/services/article-service'),

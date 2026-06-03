@@ -2,13 +2,13 @@ export interface SiteBrandConfig {
     brandName: string;
     siteName: string;
     alternateName: string;
-    icpNumber: string;
-    icpUrl: string;
     homeTitle: string;
     homeDescription: string;
     defaultDescription: string;
     serviceName: string;
 }
+
+const DEFAULT_SITE_URL = 'http://localhost:5046';
 
 function readConfiguredValue(...keys: string[]): string | undefined {
     for (const key of keys) {
@@ -22,11 +22,9 @@ function readConfiguredValue(...keys: string[]): string | undefined {
 }
 
 export function getSiteBrandConfig(): SiteBrandConfig {
-    const brandName = readConfiguredValue('NEXT_PUBLIC_SITE_BRAND_NAME', 'SITE_BRAND_NAME') || '知更鸟';
+    const brandName = readConfiguredValue('NEXT_PUBLIC_SITE_BRAND_NAME', 'SITE_BRAND_NAME') || '知更鸟 AI 知识库';
     const siteName = readConfiguredValue('NEXT_PUBLIC_SITE_NAME', 'SITE_NAME') || '知更鸟';
     const alternateName = readConfiguredValue('NEXT_PUBLIC_SITE_ALTERNATE_NAME', 'SITE_ALTERNATE_NAME') || 'Mockingbird';
-    const icpNumber = readConfiguredValue('NEXT_PUBLIC_SITE_ICP_NUMBER', 'SITE_ICP_NUMBER') || '冀ICP备2024081438号';
-    const icpUrl = readConfiguredValue('NEXT_PUBLIC_SITE_ICP_URL', 'SITE_ICP_URL') || 'https://beian.miit.gov.cn/';
     const homeTitle = readConfiguredValue('NEXT_PUBLIC_SITE_HOME_TITLE', 'SITE_HOME_TITLE') || '知更鸟 - AI 智能体情报团队';
     const homeDescription = readConfiguredValue('NEXT_PUBLIC_SITE_HOME_DESCRIPTION', 'SITE_HOME_DESCRIPTION')
         || '一群 AI 智能体组成的情报团队，帮你从信息洪流中看见真正重要的东西';
@@ -38,11 +36,32 @@ export function getSiteBrandConfig(): SiteBrandConfig {
         brandName,
         siteName,
         alternateName,
-        icpNumber,
-        icpUrl,
         homeTitle,
         homeDescription,
         defaultDescription,
         serviceName,
     };
+}
+
+function normalizeSiteUrl(value: string | undefined): string {
+    const input = value?.trim() || DEFAULT_SITE_URL;
+    const normalized = new URL(input);
+
+    normalized.pathname = '/';
+    normalized.search = '';
+    normalized.hash = '';
+
+    return normalized.toString().replace(/\/$/, '');
+}
+
+export function getSiteUrl(): string {
+    return normalizeSiteUrl(process.env.SITE_URL);
+}
+
+export function buildAbsoluteUrl(pathOrUrl: string): string {
+    if (/^https?:\/\//.test(pathOrUrl)) {
+        return pathOrUrl;
+    }
+
+    return new URL(pathOrUrl, `${getSiteUrl()}/`).toString();
 }
