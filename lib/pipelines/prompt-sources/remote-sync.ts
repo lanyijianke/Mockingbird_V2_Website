@@ -1,14 +1,13 @@
 import path from 'path';
 import { execute, queryOne } from '@/lib/db';
-import { createEmptyReport, ensureDir, type PipelineReport } from '@/lib/pipelines/pipeline-shared';
+import { createEmptyReport, type PipelineReport } from '@/lib/pipelines/pipeline-shared';
 import { createCardPreviewVideo, extractFirstFrame } from '@/lib/utils/media-processor';
 import { logger } from '@/lib/utils/logger';
 import {
     downloadMedia,
     downloadVideoViaYtDlp,
-    getMediaDir,
-    isLocalPromptMediaUrl,
-    maybeUploadPromptMediaToR2,
+    uploadPromptMediaFileToR2,
+    withPromptMediaWorkspace,
 } from '../media-pipeline';
 import { selectPromptSourceAdapter } from './adapters';
 import { loadPromptSourceConfigs } from './source-config';
@@ -47,54 +46,52 @@ async function resolveRecordMedia(
     let imagesJson = existing?.ImagesJson || null;
 
     if ((!coverImageUrl || !imagesJson) && record.mediaUrls && record.mediaUrls.length > 0) {
-        const localImages: string[] = [];
+        const uploadedImages: string[] = [];
         for (const imageUrl of record.mediaUrls) {
             if (!imageUrl.startsWith('http')) continue;
+
             const localPath = await downloadMedia(imageUrl, mediaDir);
-            if (localPath && (isLocalPromptMediaUrl(localPath) || localPath !== imageUrl)) {
-                localImages.push(localPath);
-                if (!coverImageUrl) coverImageUrl = localPath;
-            }
+            if (!localPath) continue;
+
+            const uploadedUrl = await uploadPromptMediaFileToR2(localPath, 'images');
+            if (!uploadedUrl) continue;
+
+            uploadedImages.push(uploadedUrl);
+            if (!coverImageUrl) coverImageUrl = uploadedUrl;
         }
-        if (!imagesJson && localImages.length > 0) {
-            imagesJson = JSON.stringify(localImages);
+
+        if (!imagesJson && uploadedImages.length > 0) {
+            imagesJson = JSON.stringify(uploadedImages);
         }
     }
 
-    if (!videoPreviewUrl && record.videoUrls && record.videoUrls.length > 0) {
+    if ((!videoPreviewUrl || !cardPreviewVideoUrl || !coverImageUrl) && record.videoUrls && record.videoUrls.length > 0) {
         const videoUrl = record.videoUrls[0];
         if (videoUrl.startsWith('http')) {
-            videoPreviewUrl = await downloadVideoViaYtDlp(videoUrl, mediaDir, { keepLocal: true }) || await downloadMedia(videoUrl, mediaDir, { keepLocal: true });
+            const localVideoPath = await downloadVideoViaYtDlp(videoUrl, mediaDir) || await downloadMedia(videoUrl, mediaDir);
+
+            if (localVideoPath) {
+                if (!videoPreviewUrl) {
+                    videoPreviewUrl = await uploadPromptMediaFileToR2(localVideoPath, 'videos');
+                }
+
+                if (!cardPreviewVideoUrl) {
+                    const previewFileName = await createCardPreviewVideo(localVideoPath);
+                    if (previewFileName) {
+                        const previewPath = path.join(mediaDir, previewFileName);
+                        cardPreviewVideoUrl = await uploadPromptMediaFileToR2(previewPath, 'previews');
+                    }
+                }
+
+                if (!coverImageUrl) {
+                    const coverFileName = await extractFirstFrame(localVideoPath, mediaDir);
+                    if (coverFileName) {
+                        const coverPath = path.join(mediaDir, coverFileName);
+                        coverImageUrl = await uploadPromptMediaFileToR2(coverPath, 'images');
+                    }
+                }
+            }
         }
-    }
-
-    if (!cardPreviewVideoUrl && videoPreviewUrl && isLocalPromptMediaUrl(videoPreviewUrl)) {
-        const absoluteVideoPath = path.join(mediaDir, path.basename(videoPreviewUrl));
-        const previewFileName = await createCardPreviewVideo(absoluteVideoPath);
-        if (previewFileName) {
-            cardPreviewVideoUrl = await maybeUploadPromptMediaToR2(`/content/prompts/media/${previewFileName}`, mediaDir, 'previews');
-        }
-    }
-
-    const localVideoPreviewUrl = videoPreviewUrl;
-    if (!coverImageUrl && localVideoPreviewUrl && isLocalPromptMediaUrl(localVideoPreviewUrl)) {
-        const absoluteVideoPath = path.join(mediaDir, path.basename(localVideoPreviewUrl));
-        const coverFileName = await extractFirstFrame(absoluteVideoPath, mediaDir);
-        if (coverFileName) {
-            coverImageUrl = await maybeUploadPromptMediaToR2(`/content/prompts/media/${coverFileName}`, mediaDir, 'images');
-        }
-    }
-
-    if (videoPreviewUrl && isLocalPromptMediaUrl(videoPreviewUrl)) {
-        videoPreviewUrl = await maybeUploadPromptMediaToR2(videoPreviewUrl, mediaDir, 'videos');
-    }
-
-    if (cardPreviewVideoUrl && isLocalPromptMediaUrl(cardPreviewVideoUrl)) {
-        cardPreviewVideoUrl = await maybeUploadPromptMediaToR2(cardPreviewVideoUrl, mediaDir, 'previews');
-    }
-
-    if (coverImageUrl && isLocalPromptMediaUrl(coverImageUrl)) {
-        coverImageUrl = await maybeUploadPromptMediaToR2(coverImageUrl, mediaDir, 'images');
     }
 
     return { coverImageUrl, videoPreviewUrl, cardPreviewVideoUrl, imagesJson };
@@ -187,12 +184,12 @@ export async function syncPromptSourceRecords(
     const report = createEmptyReport();
     report.totalParsed = records.length;
 
-    const mediaDir = getMediaDir();
-    await ensureDir(mediaDir);
-
     for (const record of records) {
         try {
-            const result = await upsertPromptRecord(source, record, mediaDir);
+            const result = await withPromptMediaWorkspace(async (mediaDir) => (
+                upsertPromptRecord(source, record, mediaDir)
+            ));
+
             if (result === 'inserted') report.newlyAdded++;
             if (result === 'updated') report.updated++;
             if (result === 'skipped') report.skipped++;

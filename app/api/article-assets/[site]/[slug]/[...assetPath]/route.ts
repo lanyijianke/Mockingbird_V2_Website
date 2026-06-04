@@ -32,7 +32,7 @@ export async function GET(
     const { site, slug, assetPath } = await params;
     const entry = await getArticleDirectoryEntry(site, slug);
 
-    if (!entry || assetPath.length === 0) {
+    if (!entry || entry.sourceType !== 'local' || assetPath.length === 0) {
         return new NextResponse('Not Found', { status: 404 });
     }
 

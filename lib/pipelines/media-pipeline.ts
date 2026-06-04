@@ -1,69 +1,72 @@
 import fs from 'fs/promises';
+import os from 'os';
 import path from 'path';
 import crypto from 'crypto';
 import {
-    compressVideo, compressImage,
+    compressVideo,
+    compressImage,
     downloadVideoWithAudio,
-    isVideoFile, isCompressibleImage,
+    isVideoFile,
+    isCompressibleImage,
 } from '@/lib/utils/media-processor';
-import { resolvePath, ensureDir } from '@/lib/pipelines/pipeline-shared';
 import { logger } from '@/lib/utils/logger';
 import { validateOutboundUrl } from '@/lib/utils/url-security';
 import { uploadPromptMediaToR2, type PromptMediaKind } from '@/lib/pipelines/r2-media-store';
 
 // ════════════════════════════════════════════════════════════════
-// 媒体管道编排层 — 移植自 KnowledgePipelineBase.cs
-// 提供下载 + 自动后处理（视频压缩 / 图片 WebP 转换）
+// 媒体管道编排层 — 临时文件 only
+// 下载、后处理、R2 上传都在临时工作区内完成
 // ════════════════════════════════════════════════════════════════
 
-/**
- * 获取媒体目录路径
- */
-export function getMediaDir(): string {
-    return resolvePath(
-        process.env.CONTENT_PROMPTS_MEDIA_DIR,
-        './data/prompts/media'
-    );
+const TEMP_MEDIA_PREFIX = 'prompt-media-';
+
+export async function withPromptMediaWorkspace<T>(
+    task: (workspaceDir: string) => Promise<T>
+): Promise<T> {
+    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), TEMP_MEDIA_PREFIX));
+
+    try {
+        return await task(workspaceDir);
+    } finally {
+        await fs.rm(workspaceDir, { recursive: true, force: true });
+    }
 }
 
 /**
- * 下载外部媒体资源到本地，自动进行后处理（视频压缩 / 图片转 WebP）
- * 对应 KnowledgePipelineBase.DownloadMediaAsync
- *
- * @returns 本地相对路径（如 /content/prompts/media/xxx.webp），下载失败则返回原 URL
+ * 下载外部媒体资源到指定临时目录，自动进行后处理（视频压缩 / 图片转 WebP）
+ * 失败时返回 null，不保留本地 fallback。
  */
 export async function downloadMedia(
     originalUrl: string,
-    mediaDir?: string,
-    options?: { keepLocal?: boolean }
-): Promise<string> {
+    mediaDir: string
+): Promise<string | null> {
     if (!originalUrl || !originalUrl.startsWith('http')) {
-        return originalUrl;
+        return null;
     }
 
     const validation = await validateOutboundUrl(originalUrl);
     if (!validation.ok) {
         logger.warn('MediaPipeline', `拒绝不安全媒体 URL: ${originalUrl} (${validation.reason})`);
-        return originalUrl;
+        return null;
     }
 
-    const dir = mediaDir || getMediaDir();
-    await ensureDir(dir);
+    await fs.mkdir(mediaDir, { recursive: true });
 
     try {
-        // 推断文件扩展名
         let extension = '';
         try {
             const urlPath = new URL(originalUrl).pathname;
             extension = path.extname(urlPath);
-        } catch { /* ignore */ }
+        } catch {
+            // ignore
+        }
 
         if (!extension) {
             extension = originalUrl.includes('.mp4') ? '.mp4' : '.png';
         }
 
         const fileName = `${crypto.randomUUID().replace(/-/g, '')}${extension}`;
-        const localPath = path.join(dir, fileName);
+        const localPath = path.join(mediaDir, fileName);
         const maxBytes = parseMaxDownloadBytes();
 
         console.log(`    [下载] 正在下载媒体资源: ${originalUrl}`);
@@ -76,46 +79,41 @@ export async function downloadMedia(
 
         if (!response.ok) {
             logger.warn('MediaPipeline', `下载失败: HTTP ${response.status} for URL ${originalUrl}`);
-            return originalUrl;
+            return null;
         }
 
         if (response.url && response.url !== originalUrl) {
             const redirectedValidation = await validateOutboundUrl(response.url);
             if (!redirectedValidation.ok) {
                 logger.warn('MediaPipeline', `下载失败: 重定向目标不安全 (${response.url}) for URL ${originalUrl}`);
-                return originalUrl;
+                return null;
             }
         }
 
         const contentLength = Number.parseInt(response.headers.get('content-length') || '0', 10);
         if (contentLength > 0 && contentLength > maxBytes) {
             logger.warn('MediaPipeline', `下载失败: 文件过大 (${contentLength} > ${maxBytes}) URL ${originalUrl}`);
-            return originalUrl;
+            return null;
         }
 
         const buffer = await readResponseBodyWithLimit(response, maxBytes);
         await fs.writeFile(localPath, buffer);
-        console.log(`    [下载] 成功: /content/prompts/media/${fileName}`);
+        console.log(`    [下载] 成功: ${localPath}`);
 
-        // 后处理：媒体压缩
-        const processedUrl = await postProcessMedia(localPath, fileName);
-        if (options?.keepLocal) return processedUrl;
-        return maybeUploadPromptMediaToR2(processedUrl, dir);
+        return await postProcessMedia(localPath);
     } catch (err) {
         logger.warn('MediaPipeline', `下载媒体资源异常: ${err} (URL: ${originalUrl})`);
-        return originalUrl; // 下载失败返回原始链接作为 fallback
+        return null;
     }
 }
 
 /**
  * 使用 yt-dlp 下载视频（自动合并音轨），适用于 Twitter/X 的推文链接
- * 下载成功后自动压缩
- * 对应 KnowledgePipelineBase.DownloadVideoViaYtDlpAsync
+ * 下载成功后自动压缩，并返回临时目录中的绝对路径。
  */
 export async function downloadVideoViaYtDlp(
     sourcePageUrl: string,
-    mediaDir?: string,
-    options?: { keepLocal?: boolean }
+    mediaDir: string
 ): Promise<string | null> {
     if (!sourcePageUrl) return null;
 
@@ -125,48 +123,34 @@ export async function downloadVideoViaYtDlp(
         return null;
     }
 
-    const dir = mediaDir || getMediaDir();
-    await ensureDir(dir);
+    await fs.mkdir(mediaDir, { recursive: true });
 
     console.log(`    [yt-dlp] 尝试从推文页面下载视频: ${sourcePageUrl}`);
-    const localPath = await downloadVideoWithAudio(sourcePageUrl, dir);
+    const localPath = await downloadVideoWithAudio(sourcePageUrl, mediaDir);
 
-    if (localPath) {
-        // 压缩刚下载的视频
-        const absolutePath = path.join(dir, path.basename(localPath));
-        try {
-            await fs.access(absolutePath);
-            console.log('    [压缩] 对 yt-dlp 下载的视频进行压缩...');
-            await compressVideo(absolutePath);
-        } catch {
-            // 文件不存在，跳过压缩
-        }
-        if (options?.keepLocal) return localPath;
-        return maybeUploadPromptMediaToR2(localPath, dir, 'videos');
-    }
+    if (!localPath) return null;
 
-    return null;
-}
-
-export function isLocalPromptMediaUrl(value: string): boolean {
-    return value.startsWith('/content/prompts/media/');
-}
-
-export async function maybeUploadPromptMediaToR2(
-    localUrl: string,
-    mediaDir?: string,
-    kind?: PromptMediaKind
-): Promise<string> {
-    if (process.env.PROMPT_MEDIA_STORAGE !== 'r2') return localUrl;
-    if (!isLocalPromptMediaUrl(localUrl)) return localUrl;
-
-    const fileName = path.basename(localUrl);
-    const dir = mediaDir || getMediaDir();
-    const absolutePath = path.join(dir, fileName);
-    const mediaKind = kind || inferPromptMediaKind(absolutePath, fileName);
-
+    const absolutePath = path.isAbsolute(localPath) ? localPath : path.join(mediaDir, path.basename(localPath));
     try {
-        const body = await fs.readFile(absolutePath);
+        await fs.access(absolutePath);
+        console.log('    [压缩] 对 yt-dlp 下载的视频进行压缩...');
+        await compressVideo(absolutePath);
+        return absolutePath;
+    } catch (err) {
+        logger.warn('MediaPipeline', `yt-dlp 产物不存在或不可用: ${absolutePath} (${err})`);
+        return null;
+    }
+}
+
+export async function uploadPromptMediaFileToR2(
+    filePath: string,
+    kind?: PromptMediaKind
+): Promise<string | null> {
+    try {
+        const fileName = path.basename(filePath);
+        const mediaKind = kind || inferPromptMediaKind(filePath, fileName);
+        const body = await fs.readFile(filePath);
+
         return await uploadPromptMediaToR2({
             kind: mediaKind,
             fileName,
@@ -174,14 +158,33 @@ export async function maybeUploadPromptMediaToR2(
             contentType: inferContentType(fileName),
         });
     } catch (err) {
-        logger.warn('MediaPipeline', `R2 上传失败，回退本地媒体路径: ${localUrl} (${err})`);
-        return localUrl;
+        logger.warn('MediaPipeline', `R2 上传失败: ${filePath} (${err})`);
+        return null;
     }
 }
 
-function inferPromptMediaKind(absolutePath: string, fileName: string): PromptMediaKind {
+// 现行管线不再依赖本地持久目录，但底层下载器仍返回本地文件路径。
+async function postProcessMedia(localPath: string): Promise<string> {
+    if (isVideoFile(localPath)) {
+        console.log(`    [压缩] 正在压缩视频: ${path.basename(localPath)}`);
+        await compressVideo(localPath);
+        return localPath;
+    }
+
+    if (isCompressibleImage(localPath)) {
+        console.log(`    [压缩] 正在转换图片为 WebP: ${path.basename(localPath)}`);
+        const success = await compressImage(localPath);
+        if (success) {
+            return localPath.replace(/\.[^.]+$/, '.webp');
+        }
+    }
+
+    return localPath;
+}
+
+function inferPromptMediaKind(filePath: string, fileName: string): PromptMediaKind {
     if (/\.card\.mp4$/i.test(fileName)) return 'previews';
-    if (isVideoFile(absolutePath)) return 'videos';
+    if (isVideoFile(filePath)) return 'videos';
     return 'images';
 }
 
@@ -195,35 +198,10 @@ function inferContentType(fileName: string): string {
     return 'application/octet-stream';
 }
 
-/**
- * 媒体后处理：根据文件类型自动压缩视频或转换图片
- * 对应 KnowledgePipelineBase.PostProcessMediaAsync
- */
-async function postProcessMedia(localPath: string, fileName: string): Promise<string> {
-    if (isVideoFile(localPath)) {
-        console.log(`    [压缩] 正在压缩视频: ${fileName}`);
-        await compressVideo(localPath);
-        return `/content/prompts/media/${fileName}`;
-    }
-
-    if (isCompressibleImage(localPath)) {
-        console.log(`    [压缩] 正在转换图片为 WebP: ${fileName}`);
-        const success = await compressImage(localPath);
-        if (success) {
-            // 图片被转为 .webp，更新文件名
-            const webpFileName = fileName.replace(/\.[^.]+$/, '.webp');
-            return `/content/prompts/media/${webpFileName}`;
-        }
-        return `/content/prompts/media/${fileName}`;
-    }
-
-    return `/content/prompts/media/${fileName}`;
-}
-
 function parseMaxDownloadBytes(): number {
     const raw = Number.parseInt(process.env.MEDIA_DOWNLOAD_MAX_BYTES || '', 10);
     if (Number.isFinite(raw) && raw > 0) return raw;
-    return 50 * 1024 * 1024; // 50MB
+    return 50 * 1024 * 1024;
 }
 
 async function readResponseBodyWithLimit(response: Response, maxBytes: number): Promise<Buffer> {

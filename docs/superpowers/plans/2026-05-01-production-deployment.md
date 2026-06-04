@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 将线上 aigcclub.com.cn 从 SQLite 版本升级到 MySQL 版本，数据库迁移 + 代码发布。
+**Goal:** 将线上 zgnknowledge.online 从 SQLite 版本升级到 MySQL 版本，数据库迁移 + 代码发布。
 
 **Architecture:** 在服务器上创建 MySQL 数据库和用户 → 更新 .env.production → rsync 同步新代码 → 备份旧代码 → build（自动建表）→ 重启 systemd 服务 → 验证。
 
@@ -21,7 +21,7 @@
 | 应用目录 | `/home/grank/apps/mockingbird-knowledge-web/current` |
 | 环境变量文件 | `/home/grank/apps/mockingbird-knowledge-web/shared/.env.production` |
 | 当前数据库 | SQLite（`/home/grank/apps/mockingbird-knowledge-web/shared/data/knowledge.db`） |
-| 域名 | aigcclub.com.cn |
+| 域名 | zgnknowledge.online |
 | Nginx | 已配好反代 → :5046，无需改动 |
 
 ## 变更摘要
@@ -228,7 +228,7 @@ Expected: `Active: active (running)`，日志中有 `[DB] MySQL 已连接`
 - [ ] **Step 3: 本地 curl 验证**
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}" https://aigcclub.com.cn
+curl -s -o /dev/null -w "%{http_code}" https://zgnknowledge.online
 ```
 
 Expected: `200`
@@ -236,14 +236,14 @@ Expected: `200`
 - [ ] **Step 4: 健康检查接口**
 
 ```bash
-curl -s https://aigcclub.com.cn/api/health
+curl -s https://zgnknowledge.online/api/health
 ```
 
 Expected: 返回健康状态 JSON
 
 - [ ] **Step 5: 浏览器验证**
 
-打开 https://aigcclub.com.cn ，确认：
+打开 https://zgnknowledge.online ，确认：
 - 首页正常渲染
 - 提示词、文章页面正常
 - 点击"登录"→ 出现 toast "功能建设中，敬请期待"
@@ -258,7 +258,7 @@ Expected: 返回健康状态 JSON
 - [ ] **Step 1: 手动触发同步**
 
 ```bash
-curl -s -X POST "https://aigcclub.com.cn/api/jobs?action=start" \
+curl -s -X POST "https://zgnknowledge.online/api/jobs?action=start" \
   -H "Authorization: Bearer YOUR_KNOWLEDGE_ADMIN_TOKEN"
 ```
 

@@ -309,7 +309,7 @@ export async function downloadVideoWithAudio(
             try {
                 const stat = await fs.stat(outputPath);
                 console.log(`[yt-dlp] 下载成功: ${fileName} (${(stat.size / 1024 / 1024).toFixed(1)} MB)`);
-                return `/content/prompts/media/${fileName}`;
+                return outputPath;
             } catch {
                 return null;
             }

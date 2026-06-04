@@ -4,6 +4,8 @@ export interface PromptSourceConfig {
     id: string;
     type: PromptSourceType;
     url?: string;
+    rawUrlTemplate?: string;
+    repoUrlTemplate?: string;
     owner?: string;
     repo?: string;
     branch?: string;

@@ -22,7 +22,7 @@ export const cacheKeys = {
     },
     articles: {
         directory: (): CacheKeyPart[] => ['directory'],
-        markdown: (contentFilePath: string): CacheKeyPart[] => ['markdown', contentFilePath],
+        markdown: (contentLocator: string): CacheKeyPart[] => ['markdown', contentLocator],
     },
 } as const;
 
@@ -31,5 +31,5 @@ export const cacheTags = {
     prompts: 'prompts',
     promptDetail: (id: number): string => `prompts:detail:${id}`,
     articles: 'articles',
-    articleContent: (contentFilePath: string): string => `articles:content:${contentFilePath}`,
+    articleContent: (contentLocator: string): string => `articles:content:${contentLocator}`,
 } as const;

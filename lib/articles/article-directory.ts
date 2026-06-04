@@ -4,6 +4,7 @@ import { cacheKeys, cacheTags } from '@/lib/cache/keys';
 import { cachePolicies } from '@/lib/cache/policies';
 import { getCacheManager } from '@/lib/cache/runtime';
 import { loadArticleSourceConfigs } from './source-config';
+import { readR2ObjectText } from './r2-client';
 import type {
     ArticleSourceCategory,
     ArticleSourceConfig,
@@ -16,6 +17,7 @@ export interface ArticleDirectoryEntry {
     id: string;
     site: ArticleSite;
     source: string;
+    sourceType: ArticleSourceConfig['type'];
     slug: string;
     title: string;
     summary: string;
@@ -29,7 +31,10 @@ export interface ArticleDirectoryEntry {
     coverImagePath: string;
     coverUrl: string;
     contentPath: string;
-    contentFilePath: string;
+    contentLocator: string;
+    contentFilePath?: string;
+    contentBucket?: string;
+    contentKey?: string;
     publishedAt: string;
     updatedAt: string | null;
     seoTitle?: string;
@@ -51,7 +56,20 @@ const DEFAULT_CATEGORY_NAMES: Record<string, string> = {
 };
 
 function buildAbsoluteSourcePath(config: ArticleSourceConfig, relativePath: string): string {
+    if (config.type !== 'local') {
+        throw new Error('Cannot build a local source path for a non-local article source');
+    }
     return path.join(config.rootPath, relativePath.replace(/^\/+/, ''));
+}
+
+function joinR2Key(prefix: string, relativePath: string): string {
+    return [prefix.replace(/^\/+|\/+$/g, ''), relativePath.replace(/^\/+/, '')]
+        .filter(Boolean)
+        .join('/');
+}
+
+function joinPublicUrl(baseUrl: string, relativePath: string): string {
+    return `${baseUrl.replace(/\/+$/g, '')}/${relativePath.replace(/^\/+/, '')}`;
 }
 
 function resolveContentRelativePath(contentPath: string, relativePath: string): string {
@@ -89,12 +107,14 @@ function toAssetRelativePath(contentPath: string, relativePath: string): string 
 }
 
 export function buildArticleAssetUrl(
-    site: string,
-    slug: string,
+    entry: Pick<ArticleDirectoryEntry, 'site' | 'slug' | 'sourceType' | 'assetBasePath'>,
     relativePath: string,
 ): string {
     const sanitizedPath = relativePath.replace(/^\/+/, '');
-    return `/api/article-assets/${site}/${slug}/${sanitizedPath}`.replace(/\/+/g, '/');
+    if (entry.sourceType === 'r2') {
+        return joinPublicUrl(entry.assetBasePath, sanitizedPath);
+    }
+    return `/api/article-assets/${entry.site}/${entry.slug}/${sanitizedPath}`.replace(/\/+/g, '/');
 }
 
 function isValidPublishedArticle(article: ArticleSourceManifestArticle): boolean {
@@ -128,12 +148,24 @@ function mapManifestArticle(
     categories: ArticleSourceCategory[],
 ): ArticleDirectoryEntry {
     const coverAssetPath = toAssetRelativePath(article.contentPath, article.coverImage);
-    const assetBasePath = `/api/article-assets/${manifest.site}/${article.slug}`;
+    const localContentFilePath = config.type === 'local'
+        ? buildAbsoluteSourcePath(config, article.contentPath)
+        : undefined;
+    const r2ContentKey = config.type === 'r2'
+        ? joinR2Key(config.prefix, article.contentPath)
+        : undefined;
+    const assetBasePath = config.type === 'r2'
+        ? joinPublicUrl(config.publicBaseUrl, path.posix.dirname(article.contentPath))
+        : `/api/article-assets/${manifest.site}/${article.slug}`;
+    const contentLocator = config.type === 'r2'
+        ? `r2:${config.bucket}/${r2ContentKey}`
+        : `local:${localContentFilePath}`;
 
     return {
         id: article.id,
         site: manifest.site,
         source: manifest.source,
+        sourceType: config.type,
         slug: article.slug,
         title: article.title,
         summary: article.summary,
@@ -145,9 +177,19 @@ function mapManifestArticle(
         type: article.type,
         assetBasePath,
         coverImagePath: article.coverImage,
-        coverUrl: buildArticleAssetUrl(manifest.site, article.slug, coverAssetPath),
+        coverUrl: config.type === 'r2'
+            ? joinPublicUrl(assetBasePath, coverAssetPath)
+            : buildArticleAssetUrl({
+                site: manifest.site,
+                slug: article.slug,
+                sourceType: config.type,
+                assetBasePath,
+            }, coverAssetPath),
         contentPath: article.contentPath,
-        contentFilePath: buildAbsoluteSourcePath(config, article.contentPath),
+        contentLocator,
+        contentFilePath: localContentFilePath,
+        contentBucket: config.type === 'r2' ? config.bucket : undefined,
+        contentKey: r2ContentKey,
         publishedAt: article.publishedAt,
         updatedAt: article.updatedAt ?? null,
         seoTitle: article.seoTitle,
@@ -158,6 +200,12 @@ function mapManifestArticle(
 }
 
 async function fetchSourceManifest(config: ArticleSourceConfig): Promise<ArticleSourceManifest> {
+    if (config.type === 'r2') {
+        const manifestKey = joinR2Key(config.prefix, config.manifestPath);
+        const manifest = JSON.parse(await readR2ObjectText(config.bucket, manifestKey)) as ArticleSourceManifest;
+        return manifest;
+    }
+
     const manifestFilePath = buildAbsoluteSourcePath(config, config.manifestPath);
     const manifest = JSON.parse(await fs.readFile(manifestFilePath, 'utf-8')) as ArticleSourceManifest;
     return manifest;
@@ -212,16 +260,25 @@ export async function fetchAggregatedArticleDirectory(options?: {
 }
 
 export async function fetchArticleMarkdown(
-    entry: Pick<ArticleDirectoryEntry, 'contentFilePath'>,
+    entry: Pick<ArticleDirectoryEntry, 'sourceType' | 'contentLocator' | 'contentFilePath' | 'contentBucket' | 'contentKey'>,
     options?: { forceRefresh?: boolean }
 ): Promise<string> {
     return getCacheManager().getOrLoad(
         cachePolicies.articlesMarkdown,
-        cacheKeys.articles.markdown(entry.contentFilePath),
-        async () => fs.readFile(entry.contentFilePath, 'utf-8'),
+        cacheKeys.articles.markdown(entry.contentLocator),
+        async () => {
+            if (entry.sourceType === 'r2') {
+                if (!entry.contentBucket) throw new Error('R2 article entry is missing contentBucket');
+                if (!entry.contentKey) throw new Error('R2 article entry is missing contentKey');
+                return readR2ObjectText(entry.contentBucket, entry.contentKey);
+            }
+
+            if (!entry.contentFilePath) throw new Error('Local article entry is missing contentFilePath');
+            return fs.readFile(entry.contentFilePath, 'utf-8');
+        },
         {
             forceRefresh: options?.forceRefresh,
-            tags: [cacheTags.articles, cacheTags.articleContent(entry.contentFilePath)],
+            tags: [cacheTags.articles, cacheTags.articleContent(entry.contentLocator)],
         }
     );
 }
@@ -235,6 +292,10 @@ export async function getArticleDirectoryEntry(
 }
 
 export function resolveEntryAssetFilePath(entry: ArticleDirectoryEntry, relativePath: string): string {
+    if (!entry.contentFilePath) {
+        throw new Error('Article entry does not have a local content file path');
+    }
+
     const articleDirectory = path.dirname(entry.contentFilePath);
     const normalizedPath = path.normalize(path.join(articleDirectory, relativePath));
     const normalizedArticleDirectory = path.normalize(articleDirectory);

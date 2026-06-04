@@ -1,13 +1,46 @@
 export type ArticleSite = 'ai' | 'finance' | string;
 
-export interface ArticleSourceConfig {
+export interface LocalArticleSourceConfig {
+    type: 'local';
     site: ArticleSite;
     source: string;
     rootPath: string;
     manifestPath: string;
 }
 
-export type ArticleSourceStatus = 'draft' | 'published' | 'archived';
+export interface R2ArticleSourceConfig {
+    type: 'r2';
+    site: ArticleSite;
+    source: string;
+    bucket: string;
+    prefix: string;
+    manifestPath: string;
+    publicBaseUrl: string;
+}
+
+export type ArticleSourceConfig = LocalArticleSourceConfig | R2ArticleSourceConfig;
+
+export type ArticleSourceStatus =
+    | 'draft'
+    | 'review'
+    | 'scheduled'
+    | 'published'
+    | 'archived';
+
+export interface ArticleStateDocument {
+    schemaVersion: 1;
+    site: ArticleSite;
+    source: string;
+    slug: string;
+    state: ArticleSourceStatus;
+    version: number;
+    contentKey: string;
+    assetPrefix: string;
+    manifestSnapshotKey?: string;
+    checksum: string;
+    updatedAt: string;
+    updatedBy: string;
+}
 
 export interface ArticleSourceCategory {
     code: string;
@@ -29,6 +62,8 @@ export interface ArticleSourceManifestArticle {
     publishedAt: string;
     updatedAt?: string;
     status: ArticleSourceStatus;
+    stateVersion?: number;
+    checksum?: string;
     seoTitle?: string;
     seoDescription?: string;
     seoKeywords?: string;
@@ -36,8 +71,10 @@ export interface ArticleSourceManifestArticle {
 }
 
 export interface ArticleSourceManifest {
+    schemaVersion?: 1;
     site: ArticleSite;
     source: string;
+    revision?: string;
     updatedAt?: string;
     categories?: ArticleSourceCategory[];
     articles: ArticleSourceManifestArticle[];

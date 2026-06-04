@@ -8,8 +8,8 @@ import {
 vi.mock('@/lib/articles/article-directory', () => ({
     fetchAggregatedArticleDirectory: vi.fn(),
     fetchArticleMarkdown: vi.fn(),
-    buildArticleAssetUrl: (site: string, slug: string, relativePath: string) =>
-        `/api/article-assets/${site}/${slug}/${relativePath}`,
+    buildArticleAssetUrl: (entry: { site: string; slug: string }, relativePath: string) =>
+        `/api/article-assets/${entry.site}/${entry.slug}/${relativePath}`,
 }));
 
 const directoryFixture: ArticleDirectorySnapshot = {
@@ -22,6 +22,7 @@ const directoryFixture: ArticleDirectorySnapshot = {
             id: 'finance-1',
             site: 'finance',
             source: 'finance-digest',
+            sourceType: 'local',
             slug: 'fed-notes',
             title: 'Fed Notes',
             summary: 'Fed summary',
@@ -35,6 +36,7 @@ const directoryFixture: ArticleDirectorySnapshot = {
             coverImagePath: 'articles/fed-notes/images/cover.jpg',
             coverUrl: '/api/article-assets/finance/fed-notes/images/cover.jpg',
             contentPath: 'articles/fed-notes/index.md',
+            contentLocator: 'local:/data/content/finance-digest/articles/fed-notes/index.md',
             contentFilePath: '/data/content/finance-digest/articles/fed-notes/index.md',
             publishedAt: '2026-04-21T11:00:00+08:00',
             updatedAt: '2026-04-21T11:30:00+08:00',
@@ -43,6 +45,7 @@ const directoryFixture: ArticleDirectorySnapshot = {
             id: 'ai-1',
             site: 'ai',
             source: 'web-article',
+            sourceType: 'local',
             slug: 'prompt-caching',
             title: 'Prompt Caching',
             summary: 'Caching summary',
@@ -56,6 +59,7 @@ const directoryFixture: ArticleDirectorySnapshot = {
             coverImagePath: 'articles/published/prompt-caching/images/cover.jpg',
             coverUrl: '/api/article-assets/ai/prompt-caching/images/cover.jpg',
             contentPath: 'articles/published/prompt-caching/index.md',
+            contentLocator: 'local:/data/content/web-article/articles/published/prompt-caching/index.md',
             contentFilePath: '/data/content/web-article/articles/published/prompt-caching/index.md',
             publishedAt: '2026-04-20T12:20:00+08:00',
             updatedAt: '2026-04-20T12:20:00+08:00',
@@ -64,6 +68,7 @@ const directoryFixture: ArticleDirectorySnapshot = {
             id: 'ai-2',
             site: 'ai',
             source: 'web-article',
+            sourceType: 'local',
             slug: 'agent-loops',
             title: 'Agent Loops',
             summary: 'Agent summary',
@@ -77,6 +82,7 @@ const directoryFixture: ArticleDirectorySnapshot = {
             coverImagePath: 'articles/published/agent-loops/images/cover.jpg',
             coverUrl: '/api/article-assets/ai/agent-loops/images/cover.jpg',
             contentPath: 'articles/published/agent-loops/index.md',
+            contentLocator: 'local:/data/content/web-article/articles/published/agent-loops/index.md',
             contentFilePath: '/data/content/web-article/articles/published/agent-loops/index.md',
             publishedAt: '2026-04-19T09:00:00+08:00',
             updatedAt: '2026-04-19T09:00:00+08:00',

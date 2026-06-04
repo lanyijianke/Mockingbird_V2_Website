@@ -45,11 +45,10 @@ describe('media pipeline', () => {
 
     afterEach(async () => {
         global.fetch = originalFetch;
-        delete process.env.PROMPT_MEDIA_STORAGE;
         await fs.rm(tempDir, { recursive: true, force: true });
     });
 
-    it('downloads media successfully when the upstream requires a redirect hop', async () => {
+    it('downloads media into the provided temp workspace and keeps the file local', async () => {
         global.fetch = vi.fn(async (_input, init) => {
             if (init?.redirect === 'error') {
                 throw new TypeError('fetch failed');
@@ -67,7 +66,11 @@ describe('media pipeline', () => {
         const { downloadMedia } = await import('@/lib/pipelines/media-pipeline');
         const result = await downloadMedia('https://example.com/demo.mp4', tempDir);
 
-        expect(result).toMatch(/^\/content\/prompts\/media\/.+\.mp4$/);
+        expect(result).not.toBeNull();
+        const localPath = result as string;
+        expect(path.dirname(localPath)).toBe(tempDir);
+        expect(localPath).toMatch(/\.mp4$/);
+        await expect(fs.access(localPath)).resolves.toBeUndefined();
         expect(global.fetch).toHaveBeenCalledTimes(1);
         expect(global.fetch).toHaveBeenCalledWith(
             'https://example.com/demo.mp4',
@@ -77,15 +80,7 @@ describe('media pipeline', () => {
         );
     });
 
-    it('uploads processed images to R2 and returns the public URL when R2 storage is enabled', async () => {
-        process.env.PROMPT_MEDIA_STORAGE = 'r2';
-        const { isCompressibleImage } = await import('@/lib/utils/media-processor');
-        vi.mocked(isCompressibleImage).mockReturnValue(true);
-        mockCompressImage.mockImplementation(async (localPath: string) => {
-            await fs.writeFile(localPath.replace(/\.[^.]+$/, '.webp'), Buffer.from('webp-bytes'));
-            return true;
-        });
-        mockUploadPromptMediaToR2.mockResolvedValue('https://assets.zgnknowledge.online/prompts/media/images/cat.webp');
+    it('converts compressible images to webp in the temp workspace', async () => {
         global.fetch = vi.fn(async () => new Response(Buffer.from('image-bytes'), {
             status: 200,
             headers: {
@@ -93,16 +88,50 @@ describe('media pipeline', () => {
                 'content-length': '11',
             },
         })) as typeof fetch;
+        const { isCompressibleImage } = await import('@/lib/utils/media-processor');
+        vi.mocked(isCompressibleImage).mockReturnValue(true);
+        mockCompressImage.mockImplementation(async (localPath: string) => {
+            await fs.writeFile(localPath.replace(/\.[^.]+$/, '.webp'), Buffer.from('webp-bytes'));
+            return true;
+        });
 
         const { downloadMedia } = await import('@/lib/pipelines/media-pipeline');
         const result = await downloadMedia('https://example.com/cat.jpg', tempDir);
 
+        expect(result).not.toBeNull();
+        const localPath = result as string;
+        expect(path.dirname(localPath)).toBe(tempDir);
+        expect(localPath).toMatch(/\.webp$/);
+        await expect(fs.access(localPath)).resolves.toBeUndefined();
+    });
+
+    it('uploads a local media file to R2 and returns the public URL', async () => {
+        mockUploadPromptMediaToR2.mockResolvedValue('https://assets.zgnknowledge.online/prompts/media/images/cat.webp');
+        const filePath = path.join(tempDir, 'cat.webp');
+        await fs.writeFile(filePath, Buffer.from('webp-bytes'));
+
+        const { uploadPromptMediaFileToR2 } = await import('@/lib/pipelines/media-pipeline');
+        const result = await uploadPromptMediaFileToR2(filePath, 'images');
+
         expect(result).toBe('https://assets.zgnknowledge.online/prompts/media/images/cat.webp');
         expect(mockUploadPromptMediaToR2).toHaveBeenCalledWith(expect.objectContaining({
             kind: 'images',
-            fileName: expect.stringMatching(/\.webp$/),
+            fileName: 'cat.webp',
             contentType: 'image/webp',
             body: expect.any(Buffer),
         }));
+    });
+
+    it('creates and cleans up a temp workspace', async () => {
+        const { withPromptMediaWorkspace } = await import('@/lib/pipelines/media-pipeline');
+
+        let workspacePath = '';
+        await withPromptMediaWorkspace(async (workspaceDir) => {
+            workspacePath = workspaceDir;
+            await fs.writeFile(path.join(workspaceDir, 'marker.txt'), 'ok');
+            await expect(fs.access(workspaceDir)).resolves.toBeUndefined();
+        });
+
+        await expect(fs.access(workspacePath)).rejects.toThrow();
     });
 });

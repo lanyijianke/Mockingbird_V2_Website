@@ -55,7 +55,7 @@ function rewriteRelativeMarkdownAssets(content: string, entry: ArticleDirectoryE
         /!\[([^\]]*)\]\((?!https?:\/\/|data:|mailto:|#)([^)]+)\)/g,
         (_match, alt: string, relativePath: string) => {
             const sanitizedRelativePath = relativePath.trim().replace(/^\.\/+/, '');
-            return `![${alt}](${buildArticleAssetUrl(entry.site, entry.slug, sanitizedRelativePath)})`;
+            return `![${alt}](${buildArticleAssetUrl(entry, sanitizedRelativePath)})`;
         }
     );
 }

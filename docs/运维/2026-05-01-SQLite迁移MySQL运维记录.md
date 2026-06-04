@@ -12,7 +12,7 @@
 | 系统 | Ubuntu 24.04.1 LTS |
 | Node | v22.22.2 |
 | MySQL | 8.0.45 |
-| 域名 | aigcclub.com.cn |
+| 域名 | zgnknowledge.online |
 | 应用目录 | /home/grank/apps/mockingbird-knowledge-web/current |
 | 环境文件 | /home/grank/apps/mockingbird-knowledge-web/shared/.env.production |
 
@@ -147,7 +147,7 @@ sudo systemctl start mockingbird-web.service
 | 提示词 | 2087（旧数据）+ 持续同步的新数据 |
 | 服务状态 | active (running) |
 | 健康检查 | /api/health 返回 healthy |
-| 网站 | https://aigcclub.com.cn 正常访问 |
+| 网站 | https://zgnknowledge.online 正常访问 |
 
 ## 踩坑记录
 

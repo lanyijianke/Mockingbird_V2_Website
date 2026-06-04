@@ -81,6 +81,8 @@ describe('prompt source config loader', () => {
                 repo: 'awesome-seedance-2-prompts',
                 branch: 'main',
                 file: 'README_zh.md',
+                rawUrlTemplate: 'https://example.invalid/{owner}/{repo}/{branch}/{file}',
+                repoUrlTemplate: 'https://repos.example.invalid/{owner}/{repo}',
                 category: 'seedance-2',
             },
         ]);
@@ -96,6 +98,8 @@ describe('prompt source config loader', () => {
                 repo: 'awesome-seedance-2-prompts',
                 branch: 'main',
                 file: 'README_zh.md',
+                rawUrlTemplate: 'https://example.invalid/{owner}/{repo}/{branch}/{file}',
+                repoUrlTemplate: 'https://repos.example.invalid/{owner}/{repo}',
                 defaultCategory: 'seedance-2',
                 enabled: true,
             }),

@@ -476,18 +476,7 @@ export default function BrandHomePage() {
         </div>
       </section>
 
-      {/* ── Academy Promo ── */}
-      <section className="brand-academy">
-        <Link href="/academy/narratives" className="brand-academy-card glass glass-card">
-          <div className="brand-academy-badge">知更鸟学社</div>
-          <p className="brand-academy-desc">
-            会员专属深度内容 — 热门叙事追踪、快讯解读与研究报告
-          </p>
-          <span className="brand-entry-action">
-            了解更多 <i className="bi bi-arrow-right" />
-          </span>
-        </Link>
-      </section>
+      {/* Academy promo removed from the current knowledge-base-only project. */}
     </>
   );
 }

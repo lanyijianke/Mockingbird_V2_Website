@@ -54,7 +54,7 @@ const ORIGINAL_SEO_CAN_INDEX = process.env.SEO_CAN_INDEX;
 describe('SEO metadata rebuild', () => {
     beforeEach(() => {
         vi.resetModules();
-        process.env.SITE_URL = 'https://aigcclub.com.cn';
+        process.env.SITE_URL = 'https://zgnknowledge.online';
         delete process.env.SEO_CAN_INDEX;
     });
 
@@ -73,8 +73,8 @@ describe('SEO metadata rebuild', () => {
 
         expect(metadata.title).toBe('AI 知识库：AI 教程、提示词与工具榜单');
         expect(metadata.description).toContain('知更鸟 AI 知识库');
-        expect(metadata.alternates?.canonical).toBe('https://aigcclub.com.cn/');
-        expect(metadata.openGraph?.url).toBe('https://aigcclub.com.cn/');
+        expect(metadata.alternates?.canonical).toBe('https://zgnknowledge.online/');
+        expect(metadata.openGraph?.url).toBe('https://zgnknowledge.online/');
     });
 
     it('marks filtered list pages as noindex follow', async () => {
@@ -82,7 +82,7 @@ describe('SEO metadata rebuild', () => {
 
         const metadata = buildArticlesMetadata({ hasFilters: true });
 
-        expect(metadata.alternates?.canonical).toBe('https://aigcclub.com.cn/ai/articles');
+        expect(metadata.alternates?.canonical).toBe('https://zgnknowledge.online/ai/articles');
         expect(metadata.robots).toMatchObject({
             index: false,
             follow: true,
@@ -175,12 +175,12 @@ vi.mock('@/lib/services/prompt-service', () => ({
 
 describe('SEO runtime routes', () => {
     it('robots allows AI citation crawlers and points to sitemap', async () => {
-        process.env.SITE_URL = 'https://aigcclub.com.cn';
+        process.env.SITE_URL = 'https://zgnknowledge.online';
         const { default: robots } = await import('@/app/robots');
 
         const result = robots();
 
-        expect(result.sitemap).toBe('https://aigcclub.com.cn/sitemap.xml');
+        expect(result.sitemap).toBe('https://zgnknowledge.online/sitemap.xml');
         expect(result.rules).toEqual(
             expect.arrayContaining([
                 expect.objectContaining({ userAgent: 'GPTBot', allow: '/' }),
@@ -192,18 +192,18 @@ describe('SEO runtime routes', () => {
     });
 
     it('sitemap includes canonical pages and excludes removed legacy SEO pages', async () => {
-        process.env.SITE_URL = 'https://aigcclub.com.cn';
+        process.env.SITE_URL = 'https://zgnknowledge.online';
         const route = await import('@/app/sitemap.xml/route');
 
         const response = await route.GET();
         const xml = await response.text();
 
-        expect(xml).toContain('<loc>https://aigcclub.com.cn/</loc>');
-        expect(xml).toContain('<loc>https://aigcclub.com.cn/ai/articles</loc>');
-        expect(xml).toContain('<loc>https://aigcclub.com.cn/ai/prompts</loc>');
-        expect(xml).toContain('<loc>https://aigcclub.com.cn/ai/rankings/github</loc>');
-        expect(xml).toContain('<loc>https://aigcclub.com.cn/ai/articles/agent-workflow</loc>');
-        expect(xml).toContain('<loc>https://aigcclub.com.cn/ai/prompts/101</loc>');
+        expect(xml).toContain('<loc>https://zgnknowledge.online/</loc>');
+        expect(xml).toContain('<loc>https://zgnknowledge.online/ai/articles</loc>');
+        expect(xml).toContain('<loc>https://zgnknowledge.online/ai/prompts</loc>');
+        expect(xml).toContain('<loc>https://zgnknowledge.online/ai/rankings/github</loc>');
+        expect(xml).toContain('<loc>https://zgnknowledge.online/ai/articles/agent-workflow</loc>');
+        expect(xml).toContain('<loc>https://zgnknowledge.online/ai/prompts/101</loc>');
         expect(xml).not.toContain('/ai/rankings/topics');
         expect(xml).not.toContain('/ai/prompts/categories');
         expect(xml).not.toContain('/ai/prompts/scenarios');

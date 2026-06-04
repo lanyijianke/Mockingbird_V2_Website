@@ -11,6 +11,8 @@ interface LegacyRepoConfig {
     repo: string;
     branch?: string;
     file?: string;
+    rawUrlTemplate?: string;
+    repoUrlTemplate?: string;
     category: string;
 }
 
@@ -70,6 +72,8 @@ function loadLegacyPromptSyncRepos(): PromptSourceConfig[] {
                 repo: repo.repo,
                 branch: repo.branch || 'main',
                 file,
+                rawUrlTemplate: repo.rawUrlTemplate,
+                repoUrlTemplate: repo.repoUrlTemplate,
                 defaultCategory: repo.category,
                 enabled: true,
             };

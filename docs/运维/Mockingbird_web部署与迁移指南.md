@@ -121,7 +121,7 @@ rsync -a --delete --exclude ".next" --exclude "node_modules" \
 - `data`
 - `raw-incoming`
 
-提示词图片/视频是运行时数据，不是代码发布产物。生产环境应让 `CONTENT_PROMPTS_MEDIA_DIR` 指向仓库外的持久目录，例如 `/home/grank/apps/mockingbird-knowledge-web/shared/content/prompts/media` 或 `/opt/mockingbird-knowledge-web/media`。不要再把 `current/public/content/prompts/media` 当作媒体工作目录；发布同步时只需要排除实际的运行时目录，避免 `rsync --delete` 清掉线上媒体文件。
+提示词图片/视频现在走临时文件处理并直接上传 R2，不再依赖仓库外的持久媒体目录。不要再把 `current/public/content/prompts/media` 当作媒体工作目录，也不需要额外保留本地运行时媒体目录；发布同步只需继续排除 `.git`、`.next`、`node_modules`、`.env.local`、`data` 和 `raw-incoming`。
 
 示例：
 
@@ -182,7 +182,9 @@ sudo systemctl reload nginx
 - `R2_ACCOUNT_ID=...`
 - `R2_ACCESS_KEY_ID=...`
 - `R2_SECRET_ACCESS_KEY=...`
-- `CONTENT_PROMPTS_MEDIA_DIR=/home/grank/apps/mockingbird-knowledge-web/shared/content/prompts/media`
+- `PROMPT_MEDIA_R2_BUCKET=knowledge-articles`
+- `PROMPT_MEDIA_R2_PREFIX=prompts/media`
+- `PROMPT_MEDIA_R2_PUBLIC_BASE_URL=https://assets.zgnknowledge.online/prompts/media`
 
 文章内容上传完成后刷新缓存：
 
