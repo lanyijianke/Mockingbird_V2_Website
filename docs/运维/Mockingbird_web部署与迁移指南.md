@@ -8,7 +8,7 @@
 
 生产站点当前是：
 
-- 域名：`aigcclub.com.cn`
+- 域名：`zgnknowledge.online`
 - 入口层：`Cloudflare -> Nginx -> Next.js`
 - 应用服务：`mockingbird-web.service`
 - 应用监听端口：`5046`
@@ -37,23 +37,17 @@ ExecStart=/usr/bin/npm run start -- --hostname 0.0.0.0 --port 5046
 Restart=always
 ```
 
-### 2.1.1 文章内容仓库
+### 2.1.1 文章内容存储
 
-生产环境的 AI 文章内容不是放在 `current/` 代码目录里，而是单独挂载为一个本地 Git 仓库：
+生产环境文章内容存储在 Cloudflare R2，不再依赖服务器本地 Git 内容仓库。
 
-- 服务器目录：`/home/grank/web-article`
-- GitHub 仓库：`https://github.com/lanyijianke/web-article.git`
-- 当前生产 `ARTICLE_LOCAL_SOURCES`：
+- R2 bucket：`knowledge-articles`
+- 文章 manifest：`ai/manifest.json`
+- 文章正文：`ai/articles/<slug>/index.md`
+- 文章图片：`ai/articles/<slug>/images/...`
+- 公开图片域名：`https://assets.zgnknowledge.online`
 
-```env
-ARTICLE_LOCAL_SOURCES=[{"site":"ai","source":"web-article","rootPath":"/home/grank/web-article","manifestPath":"manifest.json"}]
-```
-
-这意味着：
-
-- 应用代码发布到 `/home/grank/apps/mockingbird-knowledge-web/current`
-- 文章内容更新发布到 `/home/grank/web-article`
-- 不要把文章仓库误认为 `current/` 下的一部分，也不要指向旧的 `tweet2article` 目录
+应用服务端通过 R2 S3 兼容 API 读取 `manifest.json` 和 markdown；浏览器直接从公开图片域名加载封面和正文图片。内容桥接流程上传完 R2 对象后，可以调用文章缓存刷新接口让网站立即读取最新内容。
 
 ### 2.2 Nginx 配置
 
@@ -64,10 +58,10 @@ ARTICLE_LOCAL_SOURCES=[{"site":"ai","source":"web-article","rootPath":"/home/gra
 
 当前规则要点：
 
-- `http://aigcclub.com.cn/*` 强制跳转到 `https://aigcclub.com.cn/*`
-- `http://149.88.65.19/*` 不再直出内容，统一跳转到 `https://aigcclub.com.cn/*`
-- `https://aigcclub.com.cn/*` 反代到 `http://127.0.0.1:5046`
-- `https://www.aigcclub.com.cn/*` 301 到主域名
+- `http://zgnknowledge.online/*` 强制跳转到 `https://zgnknowledge.online/*`
+- `http://149.88.65.19/*` 不再直出内容，统一跳转到 `https://zgnknowledge.online/*`
+- `https://zgnknowledge.online/*` 反代到 `http://127.0.0.1:5046`
+- `https://www.zgnknowledge.online/*` 301 到主域名
 
 ### 2.3 SSL 证书
 
@@ -126,9 +120,8 @@ rsync -a --delete --exclude ".next" --exclude "node_modules" \
 - `.env.local`
 - `data`
 - `raw-incoming`
-- `public/content/prompts/media`
 
-提示词图片/视频是运行时数据，不是代码发布产物。生产环境应让 `CONTENT_PROMPTS_MEDIA_DIR` 指向 `/home/grank/apps/mockingbird-knowledge-web/shared/content/prompts/media`，并在 `current/public/content/prompts/media` 保留到 shared 目录的符号链接；发布同步时必须排除该目录，避免 `rsync --delete` 清掉线上媒体文件。
+提示词图片/视频是运行时数据，不是代码发布产物。生产环境应让 `CONTENT_PROMPTS_MEDIA_DIR` 指向仓库外的持久目录，例如 `/home/grank/apps/mockingbird-knowledge-web/shared/content/prompts/media` 或 `/opt/mockingbird-knowledge-web/media`。不要再把 `current/public/content/prompts/media` 当作媒体工作目录；发布同步时只需要排除实际的运行时目录，避免 `rsync --delete` 清掉线上媒体文件。
 
 示例：
 
@@ -141,7 +134,6 @@ rsync -azv --delete \
   --exclude '.env.local' \
   --exclude 'data' \
   --exclude 'raw-incoming' \
-  --exclude 'public/content/prompts/media' \
   /本地/Mockingbird_Web/ \
   服务器:/home/grank/apps/mockingbird-knowledge-web/current/
 ```
@@ -182,11 +174,22 @@ sudo systemctl reload nginx
 
 当前生产至少依赖这些变量：
 
-- `SITE_URL=https://aigcclub.com.cn`
+- `SITE_URL=https://zgnknowledge.online`
 - `SEO_CAN_INDEX=true`
 - `ROBOTS_BLOCK_BAIDU=true`
-- `ARTICLE_LOCAL_SOURCES=[{"site":"ai","source":"web-article","rootPath":"/home/grank/web-article","manifestPath":"manifest.json"}]`
+- `ARTICLE_R2_SOURCES=[{"site":"ai","source":"web-article","bucket":"knowledge-articles","prefix":"ai","manifestPath":"manifest.json","publicBaseUrl":"https://assets.zgnknowledge.online/ai"}]`
+- `ARTICLE_R2_PUBLIC_HOST=assets.zgnknowledge.online`
+- `R2_ACCOUNT_ID=...`
+- `R2_ACCESS_KEY_ID=...`
+- `R2_SECRET_ACCESS_KEY=...`
 - `CONTENT_PROMPTS_MEDIA_DIR=/home/grank/apps/mockingbird-knowledge-web/shared/content/prompts/media`
+
+文章内容上传完成后刷新缓存：
+
+```bash
+curl -X POST https://zgnknowledge.online/api/articles/cache \
+  -H "Authorization: Bearer $KNOWLEDGE_ADMIN_TOKEN"
+```
 
 媒体处理依赖这些系统命令：
 
@@ -205,24 +208,24 @@ sudo systemctl reload nginx
 ### 5.1 外部巡检
 
 ```bash
-curl -I https://aigcclub.com.cn/
+curl -I https://zgnknowledge.online/
 curl -I http://149.88.65.19/
-curl -s https://aigcclub.com.cn/robots.txt
-curl -s https://aigcclub.com.cn/sitemap.xml
-curl -i -X POST "https://aigcclub.com.cn/api/jobs?action=start"
+curl -s https://zgnknowledge.online/robots.txt
+curl -s https://zgnknowledge.online/sitemap.xml
+curl -i -X POST "https://zgnknowledge.online/api/jobs?action=start"
 ```
 
 预期：
 
 - 主域名 HTTPS 返回 `200`
-- IP 的 HTTP 返回 `301` 到 `https://aigcclub.com.cn/`
+- IP 的 HTTP 返回 `301` 到 `https://zgnknowledge.online/`
 - `/robots.txt`、`/sitemap.xml` 可访问
 - 未带 token 的 `/api/jobs` 返回 `401/403/503` 之一
 
 ### 5.2 SEO 巡检脚本
 
 ```bash
-bash ../Scripts/test/check-knowledge-web-seo-launch-readiness.sh "https://aigcclub.com.cn"
+bash ../Scripts/test/check-knowledge-web-seo-launch-readiness.sh "https://zgnknowledge.online"
 ```
 
 ### 5.3 服务状态巡检
@@ -281,4 +284,4 @@ sudo systemctl reload nginx
 
 - 它是一个独立运行的 Next.js 生产服务
 - 发布核心是 `同步代码 -> build -> restart service -> 巡检`
-- 对外入口必须收敛到 `https://aigcclub.com.cn`
+- 对外入口必须收敛到 `https://zgnknowledge.online`

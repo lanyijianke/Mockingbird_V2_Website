@@ -22,7 +22,7 @@ import { uploadPromptMediaToR2, type PromptMediaKind } from '@/lib/pipelines/r2-
 export function getMediaDir(): string {
     return resolvePath(
         process.env.CONTENT_PROMPTS_MEDIA_DIR,
-        './public/content/prompts/media'
+        './data/prompts/media'
     );
 }
 
