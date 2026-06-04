@@ -3,7 +3,13 @@ import { execute, queryOne } from '@/lib/db';
 import { createEmptyReport, ensureDir, type PipelineReport } from '@/lib/pipelines/pipeline-shared';
 import { createCardPreviewVideo, extractFirstFrame } from '@/lib/utils/media-processor';
 import { logger } from '@/lib/utils/logger';
-import { downloadMedia, downloadVideoViaYtDlp, getMediaDir } from '../media-pipeline';
+import {
+    downloadMedia,
+    downloadVideoViaYtDlp,
+    getMediaDir,
+    isLocalPromptMediaUrl,
+    maybeUploadPromptMediaToR2,
+} from '../media-pipeline';
 import { selectPromptSourceAdapter } from './adapters';
 import { loadPromptSourceConfigs } from './source-config';
 import type { PromptImportRecord, PromptSourceConfig } from './types';
@@ -45,7 +51,7 @@ async function resolveRecordMedia(
         for (const imageUrl of record.mediaUrls) {
             if (!imageUrl.startsWith('http')) continue;
             const localPath = await downloadMedia(imageUrl, mediaDir);
-            if (localPath && !localPath.startsWith('http')) {
+            if (localPath && (isLocalPromptMediaUrl(localPath) || localPath !== imageUrl)) {
                 localImages.push(localPath);
                 if (!coverImageUrl) coverImageUrl = localPath;
             }
@@ -58,24 +64,37 @@ async function resolveRecordMedia(
     if (!videoPreviewUrl && record.videoUrls && record.videoUrls.length > 0) {
         const videoUrl = record.videoUrls[0];
         if (videoUrl.startsWith('http')) {
-            videoPreviewUrl = await downloadVideoViaYtDlp(videoUrl, mediaDir) || await downloadMedia(videoUrl, mediaDir);
+            videoPreviewUrl = await downloadVideoViaYtDlp(videoUrl, mediaDir, { keepLocal: true }) || await downloadMedia(videoUrl, mediaDir, { keepLocal: true });
         }
     }
 
-    if (!cardPreviewVideoUrl && videoPreviewUrl && !videoPreviewUrl.startsWith('http')) {
+    if (!cardPreviewVideoUrl && videoPreviewUrl && isLocalPromptMediaUrl(videoPreviewUrl)) {
         const absoluteVideoPath = path.join(mediaDir, path.basename(videoPreviewUrl));
         const previewFileName = await createCardPreviewVideo(absoluteVideoPath);
         if (previewFileName) {
-            cardPreviewVideoUrl = `/content/prompts/media/${previewFileName}`;
+            cardPreviewVideoUrl = await maybeUploadPromptMediaToR2(`/content/prompts/media/${previewFileName}`, mediaDir, 'previews');
         }
     }
 
-    if (!coverImageUrl && videoPreviewUrl && !videoPreviewUrl.startsWith('http')) {
-        const absoluteVideoPath = path.join(mediaDir, path.basename(videoPreviewUrl));
+    const localVideoPreviewUrl = videoPreviewUrl;
+    if (!coverImageUrl && localVideoPreviewUrl && isLocalPromptMediaUrl(localVideoPreviewUrl)) {
+        const absoluteVideoPath = path.join(mediaDir, path.basename(localVideoPreviewUrl));
         const coverFileName = await extractFirstFrame(absoluteVideoPath, mediaDir);
         if (coverFileName) {
-            coverImageUrl = `/content/prompts/media/${coverFileName}`;
+            coverImageUrl = await maybeUploadPromptMediaToR2(`/content/prompts/media/${coverFileName}`, mediaDir, 'images');
         }
+    }
+
+    if (videoPreviewUrl && isLocalPromptMediaUrl(videoPreviewUrl)) {
+        videoPreviewUrl = await maybeUploadPromptMediaToR2(videoPreviewUrl, mediaDir, 'videos');
+    }
+
+    if (cardPreviewVideoUrl && isLocalPromptMediaUrl(cardPreviewVideoUrl)) {
+        cardPreviewVideoUrl = await maybeUploadPromptMediaToR2(cardPreviewVideoUrl, mediaDir, 'previews');
+    }
+
+    if (coverImageUrl && isLocalPromptMediaUrl(coverImageUrl)) {
+        coverImageUrl = await maybeUploadPromptMediaToR2(coverImageUrl, mediaDir, 'images');
     }
 
     return { coverImageUrl, videoPreviewUrl, cardPreviewVideoUrl, imagesJson };

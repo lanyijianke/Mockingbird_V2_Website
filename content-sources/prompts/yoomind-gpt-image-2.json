@@ -5,6 +5,8 @@
   "repo": "awesome-gpt-image-2",
   "branch": "main",
   "file": "README_zh.md",
+  "rawUrlTemplate": "https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{file}",
+  "repoUrlTemplate": "https://github.com/{owner}/{repo}",
   "adapter": "github-readme-yoomind",
   "locale": "zh-CN",
   "defaultCategory": "gpt-image-2",

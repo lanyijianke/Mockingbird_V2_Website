@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockCompressVideo = vi.fn();
 const mockCompressImage = vi.fn();
+const mockUploadPromptMediaToR2 = vi.fn();
 
 vi.mock('@/lib/utils/media-processor', () => ({
     compressVideo: mockCompressVideo,
@@ -28,6 +29,10 @@ vi.mock('@/lib/utils/url-security', () => ({
     validateOutboundUrl: vi.fn(async () => ({ ok: true })),
 }));
 
+vi.mock('@/lib/pipelines/r2-media-store', () => ({
+    uploadPromptMediaToR2: mockUploadPromptMediaToR2,
+}));
+
 describe('media pipeline', () => {
     const originalFetch = global.fetch;
     let tempDir: string;
@@ -40,6 +45,7 @@ describe('media pipeline', () => {
 
     afterEach(async () => {
         global.fetch = originalFetch;
+        delete process.env.PROMPT_MEDIA_STORAGE;
         await fs.rm(tempDir, { recursive: true, force: true });
     });
 
@@ -69,5 +75,34 @@ describe('media pipeline', () => {
                 redirect: 'follow',
             })
         );
+    });
+
+    it('uploads processed images to R2 and returns the public URL when R2 storage is enabled', async () => {
+        process.env.PROMPT_MEDIA_STORAGE = 'r2';
+        const { isCompressibleImage } = await import('@/lib/utils/media-processor');
+        vi.mocked(isCompressibleImage).mockReturnValue(true);
+        mockCompressImage.mockImplementation(async (localPath: string) => {
+            await fs.writeFile(localPath.replace(/\.[^.]+$/, '.webp'), Buffer.from('webp-bytes'));
+            return true;
+        });
+        mockUploadPromptMediaToR2.mockResolvedValue('https://assets.zgnknowledge.online/prompts/media/images/cat.webp');
+        global.fetch = vi.fn(async () => new Response(Buffer.from('image-bytes'), {
+            status: 200,
+            headers: {
+                'content-type': 'image/jpeg',
+                'content-length': '11',
+            },
+        })) as typeof fetch;
+
+        const { downloadMedia } = await import('@/lib/pipelines/media-pipeline');
+        const result = await downloadMedia('https://example.com/cat.jpg', tempDir);
+
+        expect(result).toBe('https://assets.zgnknowledge.online/prompts/media/images/cat.webp');
+        expect(mockUploadPromptMediaToR2).toHaveBeenCalledWith(expect.objectContaining({
+            kind: 'images',
+            fileName: expect.stringMatching(/\.webp$/),
+            contentType: 'image/webp',
+            body: expect.any(Buffer),
+        }));
     });
 });

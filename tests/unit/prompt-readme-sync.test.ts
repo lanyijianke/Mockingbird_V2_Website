@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
     inferCloudflareVideoDownloadUrl,
     parseReadmeToPrompts,
@@ -68,6 +68,120 @@ another test prompt
 });
 
 describe('YouMind README source adapter', () => {
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it('fetches README content from the configured raw URL template', async () => {
+        const fetchMock = vi.fn(async () => ({
+            ok: true,
+            text: async () => '# README',
+        }));
+        vi.stubGlobal('fetch', fetchMock);
+
+        await expect(githubReadmeYouMindAdapter.fetchSource({
+            id: 'template-source',
+            type: 'github-readme',
+            owner: 'ExampleOrg',
+            repo: 'example-prompts',
+            branch: 'main',
+            file: 'README_zh.md',
+            rawUrlTemplate: 'https://example.invalid/{owner}/{repo}/{branch}/{file}',
+            repoUrlTemplate: 'https://example.invalid/{owner}/{repo}',
+            adapter: 'github-readme-yoomind',
+            defaultCategory: 'gpt-image-2',
+            enabled: true,
+        })).resolves.toBe('# README');
+
+        expect(fetchMock).toHaveBeenCalledWith('https://example.invalid/ExampleOrg/example-prompts/main/README_zh.md');
+    });
+
+    it('requires an explicit source URL or raw URL template', async () => {
+        await expect(githubReadmeYouMindAdapter.fetchSource({
+            id: 'missing-template',
+            type: 'github-readme',
+            owner: 'ExampleOrg',
+            repo: 'example-prompts',
+            branch: 'main',
+            file: 'README_zh.md',
+            adapter: 'github-readme-yoomind',
+            defaultCategory: 'gpt-image-2',
+            enabled: true,
+        })).rejects.toThrow(/rawUrlTemplate|url/i);
+    });
+
+    it('extracts direct mp4 links into videoUrls', async () => {
+        const readme = `
+### No. 2: Direct MP4 Seedance Prompt
+
+#### 📝 提示词
+
+\`\`\`
+video prompt body
+\`\`\`
+
+#### 🎬 视频
+
+<a href="https://github.com/YouMind-OpenLab/awesome-seedance-2-prompts/releases/download/videos/594.mp4">
+<img src="https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/e066fab457509bc6809ea212ae5d6a51/thumbnails/thumbnail.jpg" width="700">
+</a>
+`;
+
+        const records = await githubReadmeYouMindAdapter.parse(readme, {
+            id: 'yoomind-seedance-2',
+            type: 'github-readme',
+            owner: 'YouMind-OpenLab',
+            repo: 'awesome-seedance-2-prompts',
+            branch: 'main',
+            file: 'README_zh.md',
+            rawUrlTemplate: 'https://example.invalid/{owner}/{repo}/{branch}/{file}',
+            repoUrlTemplate: 'https://repos.example.invalid/{owner}/{repo}',
+            adapter: 'github-readme-yoomind',
+            defaultCategory: 'seedance-2',
+            enabled: true,
+        });
+
+        expect(records[0].videoUrls).toEqual([
+            'https://github.com/YouMind-OpenLab/awesome-seedance-2-prompts/releases/download/videos/594.mp4',
+        ]);
+    });
+
+    it('infers Cloudflare Stream download URLs from thumbnail-only Seedance records', async () => {
+        const readme = `
+### No. 6: Thumbnail Only Seedance Prompt
+
+#### 📝 提示词
+
+\`\`\`
+video prompt body
+\`\`\`
+
+#### 🎬 视频
+
+<img src="https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/3a7fb0a6d706b9f568479bb720ce1ad4/thumbnails/thumbnail.jpg" width="700">
+
+**[🎬 观看视频 →](https://youmind.com/zh-CN/seedance-2-0-prompts?id=2530)**
+`;
+
+        const records = await githubReadmeYouMindAdapter.parse(readme, {
+            id: 'yoomind-seedance-2',
+            type: 'github-readme',
+            owner: 'YouMind-OpenLab',
+            repo: 'awesome-seedance-2-prompts',
+            branch: 'main',
+            file: 'README_zh.md',
+            rawUrlTemplate: 'https://example.invalid/{owner}/{repo}/{branch}/{file}',
+            repoUrlTemplate: 'https://repos.example.invalid/{owner}/{repo}',
+            adapter: 'github-readme-yoomind',
+            defaultCategory: 'seedance-2',
+            enabled: true,
+        });
+
+        expect(records[0].videoUrls).toEqual([
+            'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/3a7fb0a6d706b9f568479bb720ce1ad4/downloads/default.mp4',
+        ]);
+    });
+
     it('parses GPT Image 2 Chinese README sections into normalized import records', async () => {
         const readme = `
 ### No. 1: 个人资料 / 头像 - 毛茸茸蓝眼小猫的影棚肖像
@@ -105,6 +219,8 @@ describe('YouMind README source adapter', () => {
             repo: 'awesome-gpt-image-2',
             branch: 'main',
             file: 'README_zh.md',
+            rawUrlTemplate: 'https://example.invalid/{owner}/{repo}/{branch}/{file}',
+            repoUrlTemplate: 'https://repos.example.invalid/{owner}/{repo}',
             adapter: 'github-readme-yoomind',
             locale: 'zh-CN',
             defaultCategory: 'gpt-image-2',
@@ -159,6 +275,8 @@ Create a VR headset exploded view poster.
             repo: 'awesome-gpt-image-2',
             branch: 'main',
             file: 'README.md',
+            rawUrlTemplate: 'https://example.invalid/{owner}/{repo}/{branch}/{file}',
+            repoUrlTemplate: 'https://repos.example.invalid/{owner}/{repo}',
             adapter: 'github-readme-yoomind',
             defaultCategory: 'gpt-image-2',
             enabled: true,

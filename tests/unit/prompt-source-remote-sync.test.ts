@@ -6,6 +6,7 @@ const mockDownloadMedia = vi.fn();
 const mockDownloadVideoViaYtDlp = vi.fn();
 const mockCreateCardPreviewVideo = vi.fn();
 const mockExtractFirstFrame = vi.fn();
+const mockMaybeUploadPromptMediaToR2 = vi.fn(async (value: string) => value);
 
 vi.mock('@/lib/db', () => ({
     queryOne: mockQueryOne,
@@ -16,6 +17,8 @@ vi.mock('@/lib/pipelines/media-pipeline', () => ({
     downloadMedia: mockDownloadMedia,
     downloadVideoViaYtDlp: mockDownloadVideoViaYtDlp,
     getMediaDir: () => '/tmp/prompt-media',
+    isLocalPromptMediaUrl: (value: string) => value.startsWith('/content/prompts/media/'),
+    maybeUploadPromptMediaToR2: mockMaybeUploadPromptMediaToR2,
 }));
 
 vi.mock('@/lib/utils/media-processor', () => ({
@@ -119,5 +122,83 @@ describe('prompt remote source sync runner', () => {
         expect(report.newlyAdded).toBe(0);
         expect(mockExecute.mock.calls[0][0]).toContain('UPDATE Prompts SET');
         expect(mockExecute.mock.calls[0][1]).toContain(42);
+    });
+
+    it('does not try to generate local preview files from existing R2 video URLs', async () => {
+        mockQueryOne.mockResolvedValue({
+            Id: 43,
+            CoverImageUrl: '/content/prompts/media/cover.webp',
+            VideoPreviewUrl: 'https://assets.zgnknowledge.online/prompts/media/videos/demo.mp4',
+            CardPreviewVideoUrl: null,
+            ImagesJson: JSON.stringify(['/content/prompts/media/cover.webp']),
+        });
+
+        const { syncPromptSourceRecords } = await import('@/lib/pipelines/prompt-sources/remote-sync');
+        const report = await syncPromptSourceRecords(
+            {
+                id: 'test-source',
+                type: 'github-readme',
+                defaultCategory: 'seedance-2',
+                enabled: true,
+            },
+            [
+                {
+                    externalId: 'test-source:no-2',
+                    title: 'Seedance Prompt',
+                    content: 'Make a video',
+                    category: 'seedance-2',
+                    sourceUrl: 'https://example.com/video',
+                    videoUrls: ['https://example.com/demo.mp4'],
+                },
+            ]
+        );
+
+        expect(report.skipped).toBe(1);
+        expect(mockCreateCardPreviewVideo).not.toHaveBeenCalled();
+        expect(mockExecute).not.toHaveBeenCalled();
+    });
+
+    it('keeps video derivations local until they can be uploaded to R2', async () => {
+        process.env.PROMPT_MEDIA_STORAGE = 'r2';
+        mockQueryOne.mockResolvedValue(null);
+        mockDownloadVideoViaYtDlp.mockResolvedValue('/content/prompts/media/demo.mp4');
+        mockCreateCardPreviewVideo.mockResolvedValue('demo.card.mp4');
+        mockExtractFirstFrame.mockResolvedValue('demo-cover.webp');
+        mockMaybeUploadPromptMediaToR2.mockImplementation(async (value: string) => {
+            if (value.endsWith('/demo.mp4')) return 'https://assets.zgnknowledge.online/prompts/media/videos/demo.mp4';
+            if (value.endsWith('/demo.card.mp4')) return 'https://assets.zgnknowledge.online/prompts/media/previews/demo.card.mp4';
+            if (value.endsWith('/demo-cover.webp')) return 'https://assets.zgnknowledge.online/prompts/media/images/demo-cover.webp';
+            return value;
+        });
+
+        const { syncPromptSourceRecords } = await import('@/lib/pipelines/prompt-sources/remote-sync');
+        const report = await syncPromptSourceRecords(
+            {
+                id: 'test-source',
+                type: 'github-readme',
+                defaultCategory: 'seedance-2',
+                enabled: true,
+            },
+            [
+                {
+                    externalId: 'test-source:no-3',
+                    title: 'Seedance Prompt',
+                    content: 'Make a video',
+                    category: 'seedance-2',
+                    sourceUrl: 'https://example.com/video',
+                    videoUrls: ['https://example.com/demo.mp4'],
+                },
+            ]
+        );
+
+        expect(report.newlyAdded).toBe(1);
+        expect(mockCreateCardPreviewVideo).toHaveBeenCalledWith('/tmp/prompt-media/demo.mp4');
+        expect(mockExtractFirstFrame).toHaveBeenCalledWith('/tmp/prompt-media/demo.mp4', '/tmp/prompt-media');
+        expect(mockMaybeUploadPromptMediaToR2).toHaveBeenCalledWith('/content/prompts/media/demo.card.mp4', '/tmp/prompt-media', 'previews');
+        expect(mockMaybeUploadPromptMediaToR2).toHaveBeenCalledWith('/content/prompts/media/demo-cover.webp', '/tmp/prompt-media', 'images');
+        expect(mockMaybeUploadPromptMediaToR2).toHaveBeenCalledWith('/content/prompts/media/demo.mp4', '/tmp/prompt-media', 'videos');
+        expect(mockExecute.mock.calls[0][1]).toContain('https://assets.zgnknowledge.online/prompts/media/videos/demo.mp4');
+        expect(mockExecute.mock.calls[0][1]).toContain('https://assets.zgnknowledge.online/prompts/media/previews/demo.card.mp4');
+        expect(mockExecute.mock.calls[0][1]).toContain('https://assets.zgnknowledge.online/prompts/media/images/demo-cover.webp');
     });
 });

@@ -1,16 +1,26 @@
 import type { PromptImportRecord, PromptSourceAdapter, PromptSourceConfig } from '../types';
 
-function buildRawGitHubUrl(source: PromptSourceConfig): string {
+function renderSourceTemplate(template: string, source: PromptSourceConfig): string {
+    const values: Record<string, string> = {
+        owner: source.owner || '',
+        repo: source.repo || '',
+        branch: source.branch || 'main',
+        file: source.file || 'README.md',
+    };
+
+    return template.replace(/\{(owner|repo|branch|file)\}/g, (_match, key: string) => encodeURIComponent(values[key]));
+}
+
+function buildRawSourceUrl(source: PromptSourceConfig): string {
     if (source.url) return source.url;
-    if (!source.owner || !source.repo) {
-        throw new Error(`GitHub README source ${source.id} requires owner and repo`);
+    if (!source.rawUrlTemplate) {
+        throw new Error(`GitHub README source ${source.id} requires url or rawUrlTemplate`);
     }
-    return `https://raw.githubusercontent.com/${source.owner}/${source.repo}/${source.branch || 'main'}/${source.file || 'README.md'}`;
+    return renderSourceTemplate(source.rawUrlTemplate, source);
 }
 
 function getRepoUrl(source: PromptSourceConfig): string {
-    if (source.owner && source.repo) return `https://github.com/${source.owner}/${source.repo}`;
-    if (source.url?.includes('github.com')) return source.url.replace('/raw/', '/blob/');
+    if (source.repoUrlTemplate) return renderSourceTemplate(source.repoUrlTemplate, source);
     return source.url || '';
 }
 
@@ -44,6 +54,38 @@ function extractImages(section: string): string[] {
     return [...section.matchAll(/<img\s[^>]*src=["'](.*?)["'][^>]*>/gi)]
         .map((match) => match[1])
         .filter((url) => !url.includes('shields.io') && !url.includes('badge'));
+}
+
+function inferCloudflareVideoDownloadUrl(imageUrl: string): string | null {
+    try {
+        const parsed = new URL(imageUrl);
+        if (!parsed.hostname.endsWith('cloudflarestream.com')) return null;
+
+        const match = parsed.pathname.match(/^\/([^/]+)\/thumbnails\//i);
+        if (!match) return null;
+
+        return `https://${parsed.hostname}/${match[1]}/downloads/default.mp4`;
+    } catch {
+        return null;
+    }
+}
+
+function extractDirectVideoUrls(section: string): string[] {
+    const htmlLinks = [...section.matchAll(/<a\s[^>]*href=["'](.*?\.mp4(?:\?[^"']*)?)["'][^>]*>/gi)]
+        .map((match) => match[1].trim());
+    const plainLinks = [...section.matchAll(/https?:\/\/[^\s"')]+\.mp4(?:\?[^\s"')]+)?/gi)]
+        .map((match) => match[0].trim());
+
+    return Array.from(new Set([...htmlLinks, ...plainLinks]));
+}
+
+function extractVideoUrls(section: string, imageUrls: string[]): string[] {
+    const directUrls = extractDirectVideoUrls(section);
+    if (directUrls.length > 0) return directUrls;
+
+    return imageUrls
+        .map((imageUrl) => inferCloudflareVideoDownloadUrl(imageUrl))
+        .filter((videoUrl): videoUrl is string => Boolean(videoUrl));
 }
 
 function extractLinkedValue(section: string, labels: string[]): string | undefined {
@@ -111,6 +153,8 @@ export function parseYouMindReadmeToImportRecords(readme: string, source: Prompt
         const rawTitle = titleLine.replace(/^No\.\s*\d+:\s*/i, '').trim();
         const description = extractSectionText(body, ['描述', 'Description']) || codeBlocks.join('\n\n').slice(0, 200);
         const originalSourceUrl = extractLinkedUrl(body, ['来源', 'Source']);
+        const mediaUrls = extractImages(body);
+        const videoUrls = extractVideoUrls(body, mediaUrls);
 
         records.push({
             externalId: buildExternalId(source, titleLine),
@@ -122,8 +166,8 @@ export function parseYouMindReadmeToImportRecords(readme: string, source: Prompt
             author: extractLinkedValue(body, ['作者', 'Author']) || extractPlainValue(body, ['作者', 'Author']),
             sourceUrl: originalSourceUrl || buildGitHubAnchorSourceUrl(source, titleLine),
             sourcePublishedAt: extractPlainValue(body, ['发布时间', 'Published']),
-            mediaUrls: extractImages(body),
-            videoUrls: [],
+            mediaUrls,
+            videoUrls,
             flags: extractFlags(body),
             metadata: {
                 sourceId: source.id,
@@ -142,7 +186,7 @@ export const githubReadmeYouMindAdapter: PromptSourceAdapter = {
         return source.type === 'github-readme' && (!source.adapter || source.adapter === this.id);
     },
     async fetchSource(source) {
-        const res = await fetch(buildRawGitHubUrl(source));
+        const res = await fetch(buildRawSourceUrl(source));
         if (!res.ok) throw new Error(`Failed to fetch ${source.id}: ${res.status} ${res.statusText}`);
         return res.text();
     },
