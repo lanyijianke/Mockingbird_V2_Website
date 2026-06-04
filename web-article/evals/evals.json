@@ -7,6 +7,27 @@
       "prompt": "https://x.com/nickbaumann_/status/2042705384306336083 帮我翻译这篇推文，排版好给我预览",
       "expected_output": "完成抓取→清洗→翻译→校对→排版全流程，输出可预览的杂志风 HTML 文件，包含4张配图、代码块正确渲染、中文翻译通顺",
       "files": []
+    },
+    {
+      "id": 2,
+      "name": "console-chinese-handoff-review",
+      "prompt": "把这个中台长文入知识库：r2://mockingbird-content/knowledge-imports/console/2026-06-04/twitter-tweet-42.json",
+      "expected_output": "读取 Console R2 handoff JSON，识别中文内容不翻译，整理 Markdown 和图片，先写入 ai/articles/review/<slug>/，等待用户确认，不更新 ai/manifest.json",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "console-english-handoff-translation",
+      "prompt": "把这个中台英文长文入知识库：r2://mockingbird-content/knowledge-imports/console/2026-06-04/twitter-english-42.json",
+      "expected_output": "读取 Console R2 handoff JSON，按 terminology.json 翻译英文正文，生成中文 Markdown，先进入 review 状态并等待人工确认",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "console-handoff-review-gate",
+      "prompt": "这篇中台文章做成知识库文章：r2://mockingbird-content/knowledge-imports/console/2026-06-04/twitter-review-42.json",
+      "expected_output": "完成 review 草稿后停止并请求确认；在用户明确确认前不得写入 ai/manifest.json 或发布到 ai/articles/published",
+      "files": []
     }
   ]
 }

@@ -1,11 +1,11 @@
 ---
 name: web-article
-description: "将网页文章（X/Twitter、Substack、博客、新闻等）翻译成中文并排版发布到微信公众号。当用户给了一个链接并要求翻译、发公众号、做成文章、写一篇中文稿、\"这篇不错帮我翻一下\"时触发。也支持直接给原文内容。当用户给了一组文件（原文 + 译文 + 术语规则），直接进入 Maker-Checker 审校角色。"
+description: "将网页文章或 Console R2 handoff 长文入知识库/公众号。当用户给了中台生成的 r2:// 或 handoff JSON 链接，或给了网页链接并要求翻译、发公众号、做成文章、写一篇中文稿、\"这篇不错帮我翻一下\"时触发。也支持直接给原文内容。"
 ---
 
 # Web-Article — 网页文章翻译发布工作流
 
-将网页文章（X/Twitter、Substack、博客、新闻等）翻译成中文，校对排版后推送到微信公众号草稿，同时备份到 GitHub 仓库。
+将网页文章（X/Twitter、Substack、博客、新闻等）翻译成中文，校对排版后推送到微信公众号草稿，同时备份到 GitHub 仓库。对于 Console 生成的 R2 handoff 长文，优先走 Knowledge R2 review/publish 状态机。
 
 **版本**: 1.1.0（目录状态机：drafts/ + published/，微信草稿预览）
 **作者**: Hermes Agent + grank
@@ -117,6 +117,29 @@ html = render(..., body_only=False, template="minimal")
 - **default** — 杂志卡片风。白色圆角卡片 + 暖灰背景，顶部金色装饰条，居中标题 + 作者日期，Noto Serif SC 衬线标题，金色渐变下划线(h2) + 左竖线(h3)，深色代码块，引用块带引号装饰，图片圆角投影，文末原文链接。使用 Google Fonts + 完整 CSS（非内联样式）。
 
 ## 工作流
+
+### Console R2 handoff 工作流
+
+当用户提供 Console 生成的 R2 handoff locator 时使用本路径，例如：
+- `r2://.../knowledge-imports/...json`
+- `https://.../knowledge-imports/...json`
+
+此路径用于把中台长文导入 Knowledge Website 的 R2 文章状态机，不使用旧的 GitHub `articles/drafts` 路径。
+
+1. 读取 handoff JSON。`r2://bucket/key` 需要用本地 R2/S3 兼容凭证读取；HTTPS locator 可直接 fetch。
+2. 验证必需字段：`schemaVersion === 1`、`source.sourceType`、`source.sourceContentId`、`article.content`、`article.language`。
+3. 如果 `article.language` 是 `zh`，正文保持中文，只做 Markdown 规范化、标题层级整理、图片引用整理。
+4. 如果 `article.language` 是 `en`，先加载 `references/terminology.json`，按术语库把标题、摘要、正文翻译成中文。
+5. 生成 Knowledge 文章元数据：`slug`、中文 `title`、中文 `summary`、`category`、`author`、`originalUrl`、`sourcePlatform`、`type`、`tags`。优先使用 handoff 中的 `analysis.categoryHints`、`analysis.qualityScore`、`source.sourceUrl`、`source.sourcePlatform`、`article.authorHandle` / `article.authorName`。
+6. 处理 `mediaAssets`：只使用 `processingStatus === "completed"` 且有 `publicUrl` 的图片；下载并标准化为 `images/cover.jpg`、`images/01.jpg`、`images/02.jpg`；把 Markdown 图片链接改成相对路径。
+7. 先写入 review 草稿：`ai/articles/review/<slug>/index.md` 和图片对象。
+8. 写入状态：`ai/state/articles/<slug>.json`，其中 `status` 必须是 `"review"`；写入事件：`ai/events/<timestamp>-review-<slug>.json`。
+9. 向用户报告 review 草稿信息，包括标题、slug、分类、摘要、原文链接、R2 review key，并明确请求人工确认。
+10. 在用户明确确认前，禁止写入 `ai/manifest.json`，禁止写入 `ai/articles/published/<slug>/`，禁止刷新线上缓存。
+11. 用户确认后，再把文章提升到 `ai/articles/published/<slug>/`，更新 `ai/state/articles/<slug>.json` 为 `status: "published"`，读取并更新 `ai/manifest.json`，写入 `ai/manifests/<revision>.json` 快照，写入 `ai/events/<timestamp>-publish-<slug>.json`。
+12. 发布后刷新文章缓存，并请求 `/api/articles?action=slugs&site=ai` 验证 slug 已出现。
+
+**硬性审核门：** review 阶段必须停止等待用户确认。即使文章看起来无误，也不能自动发布或更新 manifest。
 
 ### 第一步：抓取推文内容
 
