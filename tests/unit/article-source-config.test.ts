@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { loadArticleSourceConfigs } from '@/lib/articles/source-config';
 
 const ORIGINAL_ENV = process.env.ARTICLE_LOCAL_SOURCES;
-const ORIGINAL_R2_ENV = process.env.ARTICLE_R2_SOURCES;
+const ORIGINAL_R2_ENV = process.env.KNOWLEDGE_ARTICLE_R2_SOURCES;
 
 describe('article source config', () => {
     afterEach(() => {
@@ -13,9 +13,9 @@ describe('article source config', () => {
         }
 
         if (typeof ORIGINAL_R2_ENV === 'string') {
-            process.env.ARTICLE_R2_SOURCES = ORIGINAL_R2_ENV;
+            process.env.KNOWLEDGE_ARTICLE_R2_SOURCES = ORIGINAL_R2_ENV;
         } else {
-            delete process.env.ARTICLE_R2_SOURCES;
+            delete process.env.KNOWLEDGE_ARTICLE_R2_SOURCES;
         }
     });
 
@@ -53,8 +53,8 @@ describe('article source config', () => {
         ]);
     });
 
-    it('loads R2 article sources from ARTICLE_R2_SOURCES', () => {
-        process.env.ARTICLE_R2_SOURCES = JSON.stringify([
+    it('loads R2 article sources from KNOWLEDGE_ARTICLE_R2_SOURCES', () => {
+        process.env.KNOWLEDGE_ARTICLE_R2_SOURCES = JSON.stringify([
             {
                 site: 'ai',
                 source: 'web-article',
@@ -106,7 +106,7 @@ describe('article source config', () => {
                 manifestPath: 'manifest.json',
             },
         ]);
-        process.env.ARTICLE_R2_SOURCES = JSON.stringify([
+        process.env.KNOWLEDGE_ARTICLE_R2_SOURCES = JSON.stringify([
             {
                 site: 'ai',
                 source: 'web-article',

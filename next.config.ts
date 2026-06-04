@@ -4,7 +4,7 @@ import { buildContentSecurityPolicy } from "./lib/security/csp";
 const contentSecurityPolicy = buildContentSecurityPolicy(process.env.NODE_ENV !== 'production');
 const consoleApiBaseUrl = process.env.CONSOLE_API_BASE_URL?.trim();
 const consoleApi = consoleApiBaseUrl ? new URL(consoleApiBaseUrl) : null;
-const articleR2PublicHost = process.env.ARTICLE_R2_PUBLIC_HOST?.trim();
+const articleR2PublicHost = process.env.KNOWLEDGE_R2_PUBLIC_ASSET_HOST?.trim();
 const consoleImagePattern = consoleApi
   ? {
       protocol: consoleApi.protocol.replace(':', '') as 'http' | 'https',

@@ -9,21 +9,21 @@ vi.mock('@/lib/articles/r2-client', () => ({
     readR2ObjectText: vi.fn(),
 }));
 
-const ORIGINAL_R2_SOURCES = process.env.ARTICLE_R2_SOURCES;
+const ORIGINAL_R2_SOURCES = process.env.KNOWLEDGE_ARTICLE_R2_SOURCES;
 const ORIGINAL_LOCAL_SOURCES = process.env.ARTICLE_LOCAL_SOURCES;
 
 describe('R2 article directory', () => {
     afterEach(() => {
         clearArticleDirectoryCache();
-        if (ORIGINAL_R2_SOURCES === undefined) delete process.env.ARTICLE_R2_SOURCES;
-        else process.env.ARTICLE_R2_SOURCES = ORIGINAL_R2_SOURCES;
+        if (ORIGINAL_R2_SOURCES === undefined) delete process.env.KNOWLEDGE_ARTICLE_R2_SOURCES;
+        else process.env.KNOWLEDGE_ARTICLE_R2_SOURCES = ORIGINAL_R2_SOURCES;
         if (ORIGINAL_LOCAL_SOURCES === undefined) delete process.env.ARTICLE_LOCAL_SOURCES;
         else process.env.ARTICLE_LOCAL_SOURCES = ORIGINAL_LOCAL_SOURCES;
         vi.clearAllMocks();
     });
 
     it('aggregates published articles from an R2 manifest and builds public asset URLs', async () => {
-        process.env.ARTICLE_R2_SOURCES = JSON.stringify([
+        process.env.KNOWLEDGE_ARTICLE_R2_SOURCES = JSON.stringify([
             {
                 site: 'ai',
                 source: 'web-article',
@@ -77,7 +77,7 @@ describe('R2 article directory', () => {
     });
 
     it('reads article markdown from R2 using the entry locator', async () => {
-        process.env.ARTICLE_R2_SOURCES = JSON.stringify([
+        process.env.KNOWLEDGE_ARTICLE_R2_SOURCES = JSON.stringify([
             {
                 site: 'ai',
                 source: 'web-article',
@@ -121,7 +121,7 @@ describe('R2 article directory', () => {
     });
 
     it('supports state-machine published article paths from R2 manifests', async () => {
-        process.env.ARTICLE_R2_SOURCES = JSON.stringify([
+        process.env.KNOWLEDGE_ARTICLE_R2_SOURCES = JSON.stringify([
             {
                 site: 'ai',
                 source: 'web-article',

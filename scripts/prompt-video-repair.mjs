@@ -52,27 +52,27 @@ async function getConnection() {
 }
 
 function getR2Client() {
-    const accountId = requireEnv('R2_ACCOUNT_ID');
+    const accountId = requireEnv('KNOWLEDGE_R2_ACCOUNT_ID');
     return new S3Client({
         region: 'auto',
         endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
         credentials: {
-            accessKeyId: requireEnv('R2_ACCESS_KEY_ID'),
-            secretAccessKey: requireEnv('R2_SECRET_ACCESS_KEY'),
+            accessKeyId: requireEnv('KNOWLEDGE_R2_ACCESS_KEY_ID'),
+            secretAccessKey: requireEnv('KNOWLEDGE_R2_SECRET_ACCESS_KEY'),
         },
     });
 }
 
 function getBucket() {
-    return process.env.PROMPT_MEDIA_R2_BUCKET?.trim() || process.env.R2_BUCKET?.trim() || 'knowledge-articles';
+    return process.env.KNOWLEDGE_PROMPT_MEDIA_R2_BUCKET?.trim() || 'knowledge-articles';
 }
 
 function getR2Prefix() {
-    return (process.env.PROMPT_MEDIA_R2_PREFIX || DEFAULT_R2_PREFIX).replace(/^\/+|\/+$/g, '');
+    return (process.env.KNOWLEDGE_PROMPT_MEDIA_R2_PREFIX || DEFAULT_R2_PREFIX).replace(/^\/+|\/+$/g, '');
 }
 
 function getPublicBaseUrl() {
-    return (process.env.PROMPT_MEDIA_R2_PUBLIC_BASE_URL || DEFAULT_PUBLIC_BASE).replace(/\/+$/g, '');
+    return (process.env.KNOWLEDGE_PROMPT_MEDIA_R2_PUBLIC_BASE_URL || DEFAULT_PUBLIC_BASE).replace(/\/+$/g, '');
 }
 
 function renderTemplate(template, source) {

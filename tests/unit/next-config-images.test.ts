@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import nextConfig from '@/next.config';
 
-const ORIGINAL_R2_PUBLIC_HOST = process.env.ARTICLE_R2_PUBLIC_HOST;
+const ORIGINAL_R2_PUBLIC_HOST = process.env.KNOWLEDGE_R2_PUBLIC_ASSET_HOST;
 
 describe('next image remote patterns', () => {
     afterEach(() => {
-        if (ORIGINAL_R2_PUBLIC_HOST === undefined) delete process.env.ARTICLE_R2_PUBLIC_HOST;
-        else process.env.ARTICLE_R2_PUBLIC_HOST = ORIGINAL_R2_PUBLIC_HOST;
+        if (ORIGINAL_R2_PUBLIC_HOST === undefined) delete process.env.KNOWLEDGE_R2_PUBLIC_ASSET_HOST;
+        else process.env.KNOWLEDGE_R2_PUBLIC_ASSET_HOST = ORIGINAL_R2_PUBLIC_HOST;
     });
 
     it('allows the production knowledge site domain for image assets', () => {
@@ -33,7 +33,7 @@ describe('next image remote patterns', () => {
 
     it('allows the configured R2 article asset domain for image assets', async () => {
         vi.resetModules();
-        process.env.ARTICLE_R2_PUBLIC_HOST = 'assets.zgnknowledge.online';
+        process.env.KNOWLEDGE_R2_PUBLIC_ASSET_HOST = 'assets.zgnknowledge.online';
 
         const { default: config } = await import('@/next.config');
         const remotePatterns = config.images?.remotePatterns ?? [];

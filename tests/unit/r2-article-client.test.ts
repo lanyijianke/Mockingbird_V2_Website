@@ -10,28 +10,28 @@ vi.mock('@aws-sdk/client-s3', async () => {
 });
 
 describe('r2 article client', () => {
-    const originalAccountId = process.env.R2_ACCOUNT_ID;
-    const originalAccessKeyId = process.env.R2_ACCESS_KEY_ID;
-    const originalSecretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+    const originalAccountId = process.env.KNOWLEDGE_R2_ACCOUNT_ID;
+    const originalAccessKeyId = process.env.KNOWLEDGE_R2_ACCESS_KEY_ID;
+    const originalSecretAccessKey = process.env.KNOWLEDGE_R2_SECRET_ACCESS_KEY;
 
     afterEach(() => {
-        if (originalAccountId === undefined) delete process.env.R2_ACCOUNT_ID;
-        else process.env.R2_ACCOUNT_ID = originalAccountId;
+        if (originalAccountId === undefined) delete process.env.KNOWLEDGE_R2_ACCOUNT_ID;
+        else process.env.KNOWLEDGE_R2_ACCOUNT_ID = originalAccountId;
 
-        if (originalAccessKeyId === undefined) delete process.env.R2_ACCESS_KEY_ID;
-        else process.env.R2_ACCESS_KEY_ID = originalAccessKeyId;
+        if (originalAccessKeyId === undefined) delete process.env.KNOWLEDGE_R2_ACCESS_KEY_ID;
+        else process.env.KNOWLEDGE_R2_ACCESS_KEY_ID = originalAccessKeyId;
 
-        if (originalSecretAccessKey === undefined) delete process.env.R2_SECRET_ACCESS_KEY;
-        else process.env.R2_SECRET_ACCESS_KEY = originalSecretAccessKey;
+        if (originalSecretAccessKey === undefined) delete process.env.KNOWLEDGE_R2_SECRET_ACCESS_KEY;
+        else process.env.KNOWLEDGE_R2_SECRET_ACCESS_KEY = originalSecretAccessKey;
 
         vi.clearAllMocks();
         vi.resetModules();
     });
 
     it('reads an R2 object as UTF-8 text', async () => {
-        process.env.R2_ACCOUNT_ID = 'account-id';
-        process.env.R2_ACCESS_KEY_ID = 'access-key';
-        process.env.R2_SECRET_ACCESS_KEY = 'secret-key';
+        process.env.KNOWLEDGE_R2_ACCOUNT_ID = 'account-id';
+        process.env.KNOWLEDGE_R2_ACCESS_KEY_ID = 'access-key';
+        process.env.KNOWLEDGE_R2_SECRET_ACCESS_KEY = 'secret-key';
 
         const send = vi.fn(async (command: GetObjectCommand) => {
             expect(command.input).toMatchObject({
@@ -54,9 +54,9 @@ describe('r2 article client', () => {
     });
 
     it('fails clearly when R2 credentials are missing', async () => {
-        delete process.env.R2_ACCOUNT_ID;
-        delete process.env.R2_ACCESS_KEY_ID;
-        delete process.env.R2_SECRET_ACCESS_KEY;
+        delete process.env.KNOWLEDGE_R2_ACCOUNT_ID;
+        delete process.env.KNOWLEDGE_R2_ACCESS_KEY_ID;
+        delete process.env.KNOWLEDGE_R2_SECRET_ACCESS_KEY;
 
         const { readR2ObjectText } = await import('@/lib/articles/r2-client');
         await expect(readR2ObjectText('bucket', 'key')).rejects.toThrow(/R2 credentials/i);

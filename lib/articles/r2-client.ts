@@ -4,9 +4,9 @@ let cachedClient: S3Client | null = null;
 let cachedSignature = '';
 
 function getR2Client(): S3Client {
-    const accountId = process.env.R2_ACCOUNT_ID?.trim();
-    const accessKeyId = process.env.R2_ACCESS_KEY_ID?.trim();
-    const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY?.trim();
+    const accountId = process.env.KNOWLEDGE_R2_ACCOUNT_ID?.trim();
+    const accessKeyId = process.env.KNOWLEDGE_R2_ACCESS_KEY_ID?.trim();
+    const secretAccessKey = process.env.KNOWLEDGE_R2_SECRET_ACCESS_KEY?.trim();
 
     if (!accountId || !accessKeyId || !secretAccessKey) {
         throw new Error('R2 credentials are not configured');

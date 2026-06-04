@@ -6,9 +6,9 @@ let cachedClient: S3Client | null = null;
 let cachedSignature = '';
 
 function getClient(): S3Client {
-    const accountId = process.env.R2_ACCOUNT_ID?.trim();
-    const accessKeyId = process.env.R2_ACCESS_KEY_ID?.trim();
-    const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY?.trim();
+    const accountId = process.env.KNOWLEDGE_R2_ACCOUNT_ID?.trim();
+    const accessKeyId = process.env.KNOWLEDGE_R2_ACCESS_KEY_ID?.trim();
+    const secretAccessKey = process.env.KNOWLEDGE_R2_SECRET_ACCESS_KEY?.trim();
 
     if (!accountId || !accessKeyId || !secretAccessKey) {
         throw new Error('R2 credentials are not configured');
@@ -39,12 +39,12 @@ export async function uploadPromptMediaToR2(input: {
     body: Buffer;
     contentType: string;
 }): Promise<string> {
-    const bucket = process.env.PROMPT_MEDIA_R2_BUCKET?.trim();
-    const prefix = process.env.PROMPT_MEDIA_R2_PREFIX?.trim() || 'prompts/media';
-    const publicBaseUrl = process.env.PROMPT_MEDIA_R2_PUBLIC_BASE_URL?.trim();
+    const bucket = process.env.KNOWLEDGE_PROMPT_MEDIA_R2_BUCKET?.trim();
+    const prefix = process.env.KNOWLEDGE_PROMPT_MEDIA_R2_PREFIX?.trim() || 'prompts/media';
+    const publicBaseUrl = process.env.KNOWLEDGE_PROMPT_MEDIA_R2_PUBLIC_BASE_URL?.trim();
 
-    if (!bucket) throw new Error('PROMPT_MEDIA_R2_BUCKET is not configured');
-    if (!publicBaseUrl) throw new Error('PROMPT_MEDIA_R2_PUBLIC_BASE_URL is not configured');
+    if (!bucket) throw new Error('KNOWLEDGE_PROMPT_MEDIA_R2_BUCKET is not configured');
+    if (!publicBaseUrl) throw new Error('KNOWLEDGE_PROMPT_MEDIA_R2_PUBLIC_BASE_URL is not configured');
 
     const key = joinKey(prefix, input.kind, input.fileName);
     await getClient().send(new PutObjectCommand({

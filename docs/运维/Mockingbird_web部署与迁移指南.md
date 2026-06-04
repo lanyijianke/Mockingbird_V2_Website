@@ -177,14 +177,14 @@ sudo systemctl reload nginx
 - `SITE_URL=https://zgnknowledge.online`
 - `SEO_CAN_INDEX=true`
 - `ROBOTS_BLOCK_BAIDU=true`
-- `ARTICLE_R2_SOURCES=[{"site":"ai","source":"web-article","bucket":"knowledge-articles","prefix":"ai","manifestPath":"manifest.json","publicBaseUrl":"https://assets.zgnknowledge.online/ai"}]`
-- `ARTICLE_R2_PUBLIC_HOST=assets.zgnknowledge.online`
-- `R2_ACCOUNT_ID=...`
-- `R2_ACCESS_KEY_ID=...`
-- `R2_SECRET_ACCESS_KEY=...`
-- `PROMPT_MEDIA_R2_BUCKET=knowledge-articles`
-- `PROMPT_MEDIA_R2_PREFIX=prompts/media`
-- `PROMPT_MEDIA_R2_PUBLIC_BASE_URL=https://assets.zgnknowledge.online/prompts/media`
+- `KNOWLEDGE_ARTICLE_R2_SOURCES=[{"site":"ai","source":"web-article","bucket":"knowledge-articles","prefix":"ai","manifestPath":"manifest.json","publicBaseUrl":"https://assets.zgnknowledge.online/ai"}]`
+- `KNOWLEDGE_R2_PUBLIC_ASSET_HOST=assets.zgnknowledge.online`
+- `KNOWLEDGE_R2_ACCOUNT_ID=...`
+- `KNOWLEDGE_R2_ACCESS_KEY_ID=...`
+- `KNOWLEDGE_R2_SECRET_ACCESS_KEY=...`
+- `KNOWLEDGE_PROMPT_MEDIA_R2_BUCKET=knowledge-articles`
+- `KNOWLEDGE_PROMPT_MEDIA_R2_PREFIX=prompts/media`
+- `KNOWLEDGE_PROMPT_MEDIA_R2_PUBLIC_BASE_URL=https://assets.zgnknowledge.online/prompts/media`
 
 文章内容上传完成后刷新缓存：
 
