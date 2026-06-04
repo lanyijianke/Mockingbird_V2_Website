@@ -46,6 +46,29 @@ The handoff JSON must include:
 - Never re-fetch Console internals; the handoff JSON is the source of truth.
 - If English translation is needed, use `references/terminology.json`.
 
+## Verification Checklist
+
+For a full test, run one Chinese handoff and one English handoff.
+
+Chinese handoff:
+- Confirm `article.language` is `zh`.
+- Confirm the staged review Markdown keeps the Chinese body instead of translating or rewriting it wholesale.
+- Confirm images are local relative paths under `images/`.
+- Confirm `ai/state/articles/<slug>.json` has `status: "review"`.
+- Confirm `ai/manifest.json` is unchanged before user confirmation.
+
+English handoff:
+- Confirm `article.language` is `en`.
+- Confirm `references/terminology.json` is loaded before translation.
+- Confirm the staged review Markdown is Chinese, not the original English body.
+- Confirm retained English terms follow the terminology rules.
+- Confirm the same review state and manifest restrictions as the Chinese handoff.
+
+Publish confirmation:
+- Only after explicit user confirmation, promote from `review` to `published`.
+- Confirm `ai/manifest.json` includes the slug only after publish.
+- Confirm `/api/articles?action=slugs&site=ai` returns the slug.
+
 ## R2 Article Layout
 
 ```text

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "exportedAt": "2026-06-04T12:10:00.000Z",
+  "source": {
+    "sourceType": "twitter",
+    "sourceContentId": "tweet-en-42",
+    "longformId": "article-en-42",
+    "sourceUrl": "https://x.com/example/status/4242",
+    "sourcePlatform": "x",
+    "domain": "x.com"
+  },
+  "article": {
+    "title": "Why reliable agent workflows need review gates",
+    "content": "# Why reliable agent workflows need review gates\n\nLLM agents are useful when they can turn messy inputs into structured outputs, but production teams need more than a polished final answer.\n\nA reliable workflow keeps the raw source, the intermediate reasoning artifacts, and the final draft separate. That separation makes it possible for an operator to inspect what changed before anything is published.\n\nThe review gate is not bureaucracy. It is the control point that prevents a confident model from silently shipping a wrong article.",
+    "language": "en",
+    "authorHandle": "example",
+    "authorName": "Example Author",
+    "publishedAt": "2026-06-04T10:10:00.000Z"
+  },
+  "analysis": {
+    "summary": "The article argues that agent workflows need review gates before publishing.",
+    "typeTags": {
+      "qualityScore": 8,
+      "contentCategory": "ai-application",
+      "primaryDomain": "technology",
+      "informationDensity": "high"
+    },
+    "qualityScore": 8,
+    "categoryHints": ["ai-application", "technology"]
+  },
+  "mediaAssets": [
+    {
+      "assetType": "image",
+      "variant": "original",
+      "publicUrl": "https://assets.example.com/review-gate-cover.jpg",
+      "originalUrl": "https://x.com/example/photo/2",
+      "processingStatus": "completed"
+    }
+  ]
+}

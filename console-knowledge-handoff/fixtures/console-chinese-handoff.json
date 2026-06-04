@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "exportedAt": "2026-06-04T12:00:00.000Z",
+  "source": {
+    "sourceType": "twitter",
+    "sourceContentId": "tweet-zh-42",
+    "longformId": "article-zh-42",
+    "sourceUrl": "https://x.com/example/status/42",
+    "sourcePlatform": "x",
+    "domain": "x.com"
+  },
+  "article": {
+    "title": "Agent 工作流为什么需要可审计的中间状态",
+    "content": "# Agent 工作流为什么需要可审计的中间状态\n\n很多团队在引入 AI Agent 之后，很快会遇到一个问题：结果看起来不错，但过程不可追踪。\n\n如果没有可审计的中间状态，运营人员无法判断模型到底是基于什么素材做出的判断，也无法在发布前进行有效复核。\n\n更可靠的方式是把采集、筛选、翻译、排版和发布拆成明确阶段，每个阶段都留下可复查的状态记录。",
+    "language": "zh",
+    "authorHandle": "example",
+    "authorName": "Example Author",
+    "publishedAt": "2026-06-04T10:00:00.000Z"
+  },
+  "analysis": {
+    "summary": "文章讨论 Agent 工作流中间状态和人工复核的重要性。",
+    "typeTags": {
+      "qualityScore": 9,
+      "contentCategory": "ai-tech",
+      "primaryDomain": "technology",
+      "informationDensity": "high"
+    },
+    "qualityScore": 9,
+    "categoryHints": ["ai-tech", "technology"]
+  },
+  "mediaAssets": [
+    {
+      "assetType": "image",
+      "variant": "original",
+      "publicUrl": "https://assets.example.com/agent-workflow-cover.jpg",
+      "originalUrl": "https://x.com/example/photo/1",
+      "processingStatus": "completed"
+    }
+  ]
+}
