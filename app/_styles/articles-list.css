@@ -54,9 +54,9 @@
   align-items: center;
   padding: 0.2rem 1rem;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow-hover);
 }
 
 .search-icon {
@@ -116,10 +116,10 @@
 
 .filter-item {
   position: relative;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--theme-surface-soft);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-border);
   color: var(--text-muted);
   padding: 0.6rem 1.5rem;
   border-radius: 12px;
@@ -142,7 +142,7 @@
   inset: 0;
   border-radius: 12px;
   padding: 1px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent, rgba(16, 185, 129, 0.1));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--theme-text) 12%, transparent), transparent, color-mix(in srgb, var(--primary) 12%, transparent));
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
@@ -152,23 +152,23 @@
 }
 
 .filter-item:hover {
-  background: rgba(16, 185, 129, 0.08);
+  background: var(--theme-accent-soft);
   color: var(--text-main);
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--glass-shadow-hover);
 }
 
 .filter-item:hover::before {
   opacity: 1;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(16, 185, 129, 0.3));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--theme-text) 20%, transparent), color-mix(in srgb, var(--primary) 30%, transparent));
 }
 
 .filter-item.active {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%);
+  background: linear-gradient(135deg, var(--theme-accent-soft) 0%, color-mix(in srgb, var(--primary) 6%, transparent) 100%);
   color: var(--primary);
-  border-color: rgba(16, 185, 129, 0.3);
+  border-color: var(--theme-accent-border);
   font-weight: 600;
-  box-shadow: 0 0 25px rgba(16, 185, 129, 0.1);
+  box-shadow: 0 0 25px color-mix(in srgb, var(--primary) 10%, transparent);
 }
 
 .filter-item.active::after {
@@ -304,8 +304,8 @@
   padding: 0.7rem 1.5rem;
   border-radius: 12px;
   color: var(--text-main);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
   text-decoration: none;
   font-family: var(--font-mono);
   font-size: 0.9rem;
@@ -316,7 +316,7 @@
 }
 
 .page-btn:hover {
-  background: rgba(16, 185, 129, 0.1);
+  background: var(--theme-accent-soft);
   border-color: var(--primary);
   color: var(--primary);
   transform: translateY(-2px);

@@ -14,11 +14,14 @@
     border-radius: 1.25rem;
     max-width: 480px;
     width: 100%;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow-hover);
 }
 
 .finance-empty-icon {
     font-size: 3rem;
-    color: #c9a84c;
+    color: var(--primary);
     display: block;
     margin-bottom: 1.25rem;
 }
@@ -42,7 +45,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    color: var(--accent, #06b6d4);
+    color: var(--accent);
     font-weight: 600;
     font-size: 1rem;
     text-decoration: none;

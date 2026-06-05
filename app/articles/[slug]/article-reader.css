@@ -19,7 +19,7 @@
     width: 0%;
     background: linear-gradient(90deg, var(--primary), var(--accent));
     transition: width 0.15s ease-out;
-    box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--primary) 50%, transparent);
 }
 
 /* ═══ Floating Back Button ═══ */
@@ -37,15 +37,15 @@
     font-size: 1rem;
     text-decoration: none;
     border-radius: 50%;
-    background: rgba(10, 10, 15, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     transition: all 0.25s;
 }
 
 .reader-back-float:hover {
-    color: white;
+    color: #fff;
     background: var(--primary);
     border-color: var(--primary);
     transform: scale(1.1);
@@ -125,14 +125,14 @@
 
 .toc-item:hover {
     color: var(--text-main);
-    background: rgba(16, 185, 129, 0.05);
+    background: var(--theme-accent-soft);
     padding-left: 1rem;
 }
 
 .toc-item.active {
     color: var(--primary);
     border-left-color: var(--primary);
-    background: rgba(16, 185, 129, 0.08);
+    background: var(--theme-accent-soft);
     font-weight: 600;
 }
 
@@ -203,9 +203,9 @@
     position: relative;
     overflow: hidden;
     background:
-        radial-gradient(ellipse at 20% 50%, rgba(16, 185, 129, 0.12), transparent 50%),
-        radial-gradient(ellipse at 80% 50%, rgba(14, 165, 233, 0.08), transparent 50%),
-        radial-gradient(ellipse at 50% 100%, rgba(16, 185, 129, 0.06), transparent 60%);
+        radial-gradient(ellipse at 20% 50%, var(--theme-accent-soft), transparent 50%),
+        radial-gradient(ellipse at 80% 50%, color-mix(in srgb, var(--primary) 8%, transparent), transparent 50%),
+        radial-gradient(ellipse at 50% 100%, color-mix(in srgb, var(--primary) 6%, transparent), transparent 60%);
     animation: meshShift 8s ease-in-out infinite alternate;
     border-bottom: 1px solid var(--glass-border);
 }
@@ -320,7 +320,7 @@
     margin-top: 2.5rem;
     margin-bottom: 1rem;
     padding-left: 0.75rem;
-    border-left: 2px solid rgba(16, 185, 129, 0.4);
+    border-left: 2px solid color-mix(in srgb, var(--primary) 40%, transparent);
     line-height: 1.4;
 }
 
@@ -365,20 +365,20 @@
 
 /* ═══ Inline Code ═══ */
 .reader-content code {
-    background: rgba(16, 185, 129, 0.08);
+    background: var(--theme-accent-soft);
     color: var(--primary);
     padding: 0.15rem 0.5rem;
     border-radius: 4px;
     font-family: var(--font-mono);
     font-size: 0.88em;
-    border: 1px solid rgba(16, 185, 129, 0.15);
+    border: 1px solid var(--theme-accent-border);
     word-break: break-word;
 }
 
 /* ═══ Code Blocks (Terminal Style) ═══ */
 .reader-content pre {
-    background: #0d1117;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--theme-code-bg);
+    border: 1px solid var(--glass-border);
     border-radius: 10px;
     overflow: hidden;
     margin: 2rem 0;
@@ -387,7 +387,7 @@
 
 .reader-content pre code {
     background: none;
-    color: #e6edf3;
+    color: var(--theme-code-text);
     padding: 1.25rem 1.5rem;
     display: block;
     overflow-x: auto;
@@ -401,8 +401,8 @@
     display: flex;
     align-items: center;
     padding: 0.6rem 1rem;
-    background: rgba(255, 255, 255, 0.04);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: var(--theme-surface-soft);
+    border-bottom: 1px solid var(--glass-border);
     font-family: var(--font-mono);
     font-size: 0.75rem;
     user-select: none;
@@ -441,7 +441,7 @@
 
 .code-copy-btn {
     background: none;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--glass-border);
     color: var(--text-muted);
     padding: 0.25rem 0.6rem;
     border-radius: 4px;
@@ -454,9 +454,9 @@
 }
 
 .code-copy-btn:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--hover-bg);
     color: var(--text-main);
-    border-color: rgba(255, 255, 255, 0.2);
+    border-color: var(--glass-border-focus);
 }
 
 .code-copy-btn.copied {
@@ -469,7 +469,7 @@
     border-left: 3px solid var(--primary);
     margin: 2rem 0;
     padding: 1rem 1.5rem;
-    background: rgba(16, 185, 129, 0.04);
+    background: var(--theme-accent-soft);
     border-radius: 0 8px 8px 0;
     font-style: italic;
     color: var(--text-muted);
@@ -511,13 +511,13 @@
 }
 
 .reader-content th {
-    background: rgba(16, 185, 129, 0.08);
+    background: var(--theme-accent-soft);
     font-weight: 600;
     color: var(--primary);
 }
 
 .reader-content tr:hover {
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--theme-surface-inset);
 }
 
 /* ═══ Images ═══ */
@@ -555,8 +555,8 @@
 }
 
 .btn-share {
-    background: rgba(16, 185, 129, 0.08);
-    border: 1px solid rgba(16, 185, 129, 0.2);
+    background: var(--theme-accent-soft);
+    border: 1px solid var(--theme-accent-border);
     color: var(--primary);
     padding: 0.6rem 1.2rem;
     border-radius: 8px;
@@ -571,7 +571,7 @@
 
 .btn-share:hover {
     background: var(--primary);
-    color: white;
+    color: #fff;
 }
 
 .back-link a {
@@ -597,14 +597,14 @@
     height: 44px;
     border-radius: 50%;
     background: var(--primary);
-    color: white;
+    color: #fff;
     border: none;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.2rem;
-    box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
+    box-shadow: 0 4px 20px color-mix(in srgb, var(--primary) 40%, transparent);
     transition: all 0.3s;
     z-index: 100;
     animation: fadeIn 0.3s ease;
@@ -612,14 +612,14 @@
 
 .back-to-top:hover {
     transform: scale(1.1);
-    box-shadow: 0 6px 30px rgba(16, 185, 129, 0.6);
+    box-shadow: 0 6px 30px color-mix(in srgb, var(--primary) 60%, transparent);
 }
 
 /* ═══ Lightbox ═══ */
 .lightbox-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.9);
+    background: color-mix(in srgb, var(--bg-main) 90%, transparent);
     z-index: 10000;
     display: flex;
     align-items: center;
@@ -633,16 +633,16 @@
     max-height: 90vh;
     object-fit: contain;
     border-radius: 8px;
-    box-shadow: 0 0 60px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 60px color-mix(in srgb, var(--bg-main) 50%, transparent);
 }
 
 .lightbox-close {
     position: fixed;
     top: 1.5rem;
     right: 1.5rem;
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--theme-surface-soft);
     border: none;
-    color: white;
+    color: #fff;
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -655,7 +655,7 @@
 }
 
 .lightbox-close:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--hover-bg);
 }
 
 /* ═══ Share Toast ═══ */
@@ -665,7 +665,7 @@
     left: 50%;
     transform: translateX(-50%);
     background: var(--primary);
-    color: white;
+    color: #fff;
     padding: 0.8rem 1.5rem;
     border-radius: 8px;
     font-size: 0.9rem;
@@ -674,7 +674,7 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    box-shadow: 0 8px 30px rgba(16, 185, 129, 0.4);
+    box-shadow: 0 8px 30px color-mix(in srgb, var(--primary) 40%, transparent);
     animation: slideUp 0.3s ease;
 }
 
@@ -787,8 +787,8 @@
 
 .related-card:hover {
     transform: translateY(-4px);
-    border-color: rgba(192, 240, 251, 0.2);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    border-color: var(--glass-border-focus);
+    box-shadow: var(--glass-shadow-hover);
 }
 
 .related-card-cover {

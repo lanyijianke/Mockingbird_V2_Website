@@ -45,12 +45,12 @@
 .filter-chip.active {
   border-color: var(--primary);
   color: var(--primary);
-  background: rgba(16, 185, 129, 0.08);
+  background: var(--theme-accent-soft);
 }
 
 .search-input {
   padding: 0.5rem 1rem;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--theme-surface-inset);
   border: 1px solid var(--glass-border);
   color: var(--text-main);
   font-family: var(--font-mono);
@@ -97,7 +97,7 @@
 .pagination .active {
   border-color: var(--primary);
   color: var(--primary);
-  background: rgba(16, 185, 129, 0.08);
+  background: var(--theme-accent-soft);
 }
 
 /* ═══════ Button ═══════ */
@@ -114,13 +114,13 @@
   text-transform: uppercase;
   font-size: 0.85rem;
   letter-spacing: 0.05em;
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.1), inset 0 0 10px rgba(16, 185, 129, 0.05);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--primary) 12%, transparent), inset 0 0 10px color-mix(in srgb, var(--primary) 6%, transparent);
 }
 
 .btn-primary:hover {
-  background: rgba(16, 185, 129, 0.1);
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.3), inset 0 0 15px rgba(16, 185, 129, 0.2);
-  text-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+  background: var(--theme-accent-soft);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--primary) 30%, transparent), inset 0 0 15px color-mix(in srgb, var(--primary) 18%, transparent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--primary) 46%, transparent);
   transform: translateY(-1px);
 }
 

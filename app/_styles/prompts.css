@@ -15,7 +15,7 @@
   top: 60px;           /* below nav */
   z-index: 20;
   padding: 0.75rem 0 0.5rem;
-  background: rgba(10, 10, 15, 0.85);
+  background: var(--nav-bg);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
@@ -24,8 +24,8 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
   border-radius: 2rem;
   padding: 0.5rem 1rem;
   transition: border-color 0.3s, box-shadow 0.3s;
@@ -33,7 +33,7 @@
 
 .prompts-search-bar:focus-within {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 0 0 3px var(--theme-accent-soft);
 }
 
 .prompts-search-bar i {
@@ -70,7 +70,7 @@
 
 .prompts-search-bar button:hover {
   color: var(--primary);
-  background: rgba(99, 102, 241, 0.1);
+  background: var(--theme-accent-soft);
 }
 
 /* --- Filter Pills --- */
@@ -94,8 +94,8 @@
   font-size: 0.78rem;
   font-weight: 500;
   color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--theme-surface-soft);
+  border: 1px solid var(--glass-border);
   text-decoration: none;
   transition: all 0.25s;
   white-space: nowrap;
@@ -103,12 +103,12 @@
 
 .filter-pill:hover {
   color: var(--text-main);
-  border-color: rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--glass-border-focus);
+  background: var(--hover-bg);
 }
 
 .filter-pill.active {
-  color: white;
+  color: #fff;
   background: var(--primary);
   border-color: var(--primary);
 }
@@ -165,8 +165,8 @@
 
 .prompt-card-v2:hover {
   transform: translateY(-4px) scale(1.015);
-  box-shadow: 0 12px 40px rgba(99, 102, 241, 0.15),
-              0 0 0 1px rgba(99, 102, 241, 0.2);
+  box-shadow: 0 12px 40px color-mix(in srgb, var(--primary) 16%, transparent),
+              0 0 0 1px color-mix(in srgb, var(--primary) 22%, transparent);
 }
 
 @media (hover: none), (pointer: coarse) {
@@ -180,7 +180,7 @@
 .pc2-cover {
   position: relative;
   aspect-ratio: 3 / 4;
-  background: #0a0a12;
+  background: var(--bg-secondary);
   overflow: hidden;
 }
 
@@ -222,7 +222,7 @@
   object-fit: cover;
   opacity: 0;
   pointer-events: none;
-  background: #05050a;
+  background: var(--bg-main);
   transform: scale(1.01);
   transition: opacity 0.22s ease, transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -243,9 +243,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(160deg, #1a1a2e 0%, #0d0d1a 50%, #16213e 100%);
+  background: linear-gradient(160deg, var(--bg-secondary) 0%, var(--bg-main) 50%, var(--bg-secondary) 100%);
   font-size: 2.5rem;
-  color: rgba(99, 102, 241, 0.12);
+  color: var(--theme-accent-soft);
 }
 
 /* --- Stat Badge (top-right) --- */
@@ -254,14 +254,14 @@
   top: 0.5rem;
   right: 0.5rem;
   z-index: 5;
-  background: rgba(0, 0, 0, 0.55);
+  background: color-mix(in srgb, var(--bg-main) 70%, transparent);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   padding: 0.2rem 0.5rem;
   border-radius: 1rem;
   font-size: 0.65rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--text-main);
   display: flex;
   align-items: center;
   gap: 0.25rem;
@@ -273,7 +273,7 @@
   top: 0.5rem;
   left: 0.5rem;
   z-index: 5;
-  background: rgba(99, 102, 241, 0.8);
+  background: var(--primary);
   width: 1.6rem;
   height: 1.6rem;
   border-radius: 50%;
@@ -281,7 +281,7 @@
   align-items: center;
   justify-content: center;
   font-size: 0.7rem;
-  color: white;
+  color: #fff;
 }
 
 /* --- Gradient Overlay + Text --- */
@@ -294,8 +294,8 @@
   padding: 2.5rem 0.65rem 0.6rem;
   background: linear-gradient(
     to top,
-    rgba(0, 0, 0, 0.85) 0%,
-    rgba(0, 0, 0, 0.5) 50%,
+    color-mix(in srgb, var(--bg-main) 88%, transparent) 0%,
+    color-mix(in srgb, var(--bg-main) 55%, transparent) 50%,
     transparent 100%
   );
   display: flex;
@@ -317,7 +317,7 @@
   font-size: 0.82rem;
   font-weight: 700;
   line-height: 1.3;
-  color: #fff;
+  color: var(--text-main);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -363,15 +363,15 @@
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
   border-radius: 2rem;
   text-decoration: none;
   transition: all 0.25s;
 }
 
 .prompts-pagination .page-btn:hover {
-  color: white;
+  color: #fff;
   background: var(--primary);
   border-color: var(--primary);
 }
@@ -412,7 +412,7 @@
 }
 
 .prompts-infinite-status button:hover {
-  color: white;
+  color: #fff;
   background: var(--primary);
   border-color: var(--primary);
 }
