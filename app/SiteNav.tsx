@@ -4,11 +4,15 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { getArticleListPath } from '@/lib/articles/article-route-paths';
+import ThemeToggle from '@/app/ThemeToggle';
+import { getBrandLogoSrc } from '@/lib/theme/theme';
+import { useTheme } from '@/app/ThemeProvider';
 
 const NAV_BRAND_NAME = '知更鸟 AI 知识库';
 
 export default function SiteNav() {
   const pathname = usePathname();
+  const { resolvedTheme } = useTheme();
 
   const isRootHome = pathname === '/';
   const isAbout = pathname.startsWith('/about');
@@ -27,7 +31,7 @@ export default function SiteNav() {
         <div className="nav-divider" />
         <Link href={brandHref} className="nav-brand-lockup" aria-label={NAV_BRAND_NAME}>
           <Image
-            src="/images/logo-nav.png"
+            src={getBrandLogoSrc(resolvedTheme)}
             alt=""
             width={42}
             height={42}
@@ -85,6 +89,8 @@ export default function SiteNav() {
             <Link href={getArticleListPath('finance')} className="nav-link">金融文章</Link>
           </>
         )}
+
+        <ThemeToggle />
 
         {/* ── Default navigation ── */}
         {!isAi && !isFinance && (

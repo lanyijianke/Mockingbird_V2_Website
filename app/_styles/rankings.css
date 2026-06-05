@@ -54,7 +54,7 @@
   top: 50%;
   left: 1rem;
   transform: translateY(-50%);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--theme-surface-soft);
   border: 1px solid var(--glass-border);
   color: var(--text-muted);
   padding: 0.2rem 0.6rem;
@@ -65,7 +65,7 @@
 }
 
 .rank-top {
-  color: #000;
+  color: var(--text-main);
 }
 
 .card-footer {
@@ -151,7 +151,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--theme-surface-soft);
   border: 1px solid var(--glass-border);
   padding: 0.15rem 0.6rem;
   border-radius: 2rem;

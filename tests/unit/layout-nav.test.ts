@@ -10,17 +10,22 @@ vi.mock('next/navigation', () => ({
     }),
 }));
 
+vi.mock('next/headers', () => ({
+    cookies: async () => ({
+        get: () => undefined,
+    }),
+}));
+
 vi.mock('@/app/NavAuthButton', () => ({
     default: () => null,
 }));
 
 describe('root layout navigation', () => {
-    it('treats the root page as the AI knowledge platform navigation', () => {
-        const html = renderToStaticMarkup(
-            RootLayout({
-                children: createElement('div', null, 'test page'),
-            })
-        );
+    it('treats the root page as the AI knowledge platform navigation', async () => {
+        const layout = await RootLayout({
+            children: createElement('div', null, 'test page'),
+        });
+        const html = renderToStaticMarkup(layout);
 
         const navLeftMatch = html.match(/<div class="nav-left">([\s\S]*?)<\/div>/);
         const navRightMatch = html.match(/<div class="nav-right">([\s\S]*?)<\/div>/);
@@ -32,6 +37,7 @@ describe('root layout navigation', () => {
         expect(navRightMatch?.[1]).not.toContain('AI 提示词');
         expect(navRightMatch?.[1]).not.toContain('href="/about"');
         expect(navRightMatch?.[1]).not.toContain('href="/finance/articles"');
+        expect(html).toContain('theme-toggle');
         expect(html).not.toContain('学社');
         expect(html).not.toContain('academy-link');
         expect(html).not.toContain('localhost:5080');
@@ -39,12 +45,11 @@ describe('root layout navigation', () => {
         expect(html).not.toContain('>auth<');
     });
 
-    it('places the about link in the left navigation area', () => {
-        const html = renderToStaticMarkup(
-            RootLayout({
-                children: createElement('div', null, 'test page'),
-            })
-        );
+    it('places the about link in the left navigation area', async () => {
+        const layout = await RootLayout({
+            children: createElement('div', null, 'test page'),
+        });
+        const html = renderToStaticMarkup(layout);
 
         const navLeftMatch = html.match(/<div class="nav-left">([\s\S]*?)<\/div>/);
         const navRightMatch = html.match(/<div class="nav-right">([\s\S]*?)<\/div>/);
@@ -53,12 +58,11 @@ describe('root layout navigation', () => {
         expect(navRightMatch?.[1]).not.toContain('href="/about"');
     });
 
-    it('renders a mobile rankings hub link and desktop dropdown links', () => {
-        const html = renderToStaticMarkup(
-            RootLayout({
-                children: createElement('div', null, 'test page'),
-            })
-        );
+    it('renders a mobile rankings hub link and desktop dropdown links', async () => {
+        const layout = await RootLayout({
+            children: createElement('div', null, 'test page'),
+        });
+        const html = renderToStaticMarkup(layout);
 
         expect(html).not.toContain('href="/ai/rankings/topics"');
         expect(html).toContain('href="/ai/rankings/github"');

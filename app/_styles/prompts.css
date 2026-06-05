@@ -294,8 +294,8 @@
   padding: 2.5rem 0.65rem 0.6rem;
   background: linear-gradient(
     to top,
-    color-mix(in srgb, var(--bg-main) 88%, transparent) 0%,
-    color-mix(in srgb, var(--bg-main) 55%, transparent) 50%,
+    color-mix(in srgb, var(--bg-main) 82%, transparent) 0%,
+    color-mix(in srgb, var(--bg-main) 48%, transparent) 50%,
     transparent 100%
   );
   display: flex;

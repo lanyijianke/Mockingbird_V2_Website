@@ -320,7 +320,7 @@
     color: var(--text-main);
 }
 
-.theme-toggle-option.is-active {
+.theme-toggle-option.active {
     background: var(--primary);
     color: #fff;
     box-shadow: 0 6px 18px color-mix(in srgb, var(--primary) 30%, transparent);

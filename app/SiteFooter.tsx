@@ -1,6 +1,10 @@
+'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { getSiteBrandConfig } from '@/lib/site-config';
+import { useTheme } from '@/app/ThemeProvider';
+import { getFooterLogoSrc } from '@/lib/theme/theme';
 
 const CONTENT_LINKS = [
   { href: '/ai/articles', label: '文章' },
@@ -21,6 +25,7 @@ const SITE_LINKS = [
 
 export default function SiteFooter() {
   const brand = getSiteBrandConfig();
+  const { resolvedTheme } = useTheme();
 
   return (
     <footer className="site-footer">
@@ -28,7 +33,7 @@ export default function SiteFooter() {
         <div className="site-footer-brand">
           <Link href="/" className="site-footer-lockup" aria-label={brand.brandName}>
             <Image
-              src="/images/logo-nav.png"
+              src={getFooterLogoSrc(resolvedTheme)}
               alt=""
               width={44}
               height={44}

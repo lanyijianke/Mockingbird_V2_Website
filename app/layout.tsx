@@ -1,9 +1,13 @@
 import { ToastProvider } from '@/app/ToastContext';
 import SiteNav from './SiteNav';
 import SiteFooter from './SiteFooter';
+import { ThemeProvider } from '@/app/ThemeProvider';
 import { buildPageMetadata } from '@/lib/seo/metadata';
+import { THEME_COOKIE_NAME, getThemeBootstrapScript, type ThemeMode } from '@/lib/theme/theme';
+import { cookies } from 'next/headers';
 import './globals.css';
 import '@/app/_styles/nav.css';
+import Script from 'next/script';
 
 export const runtime = 'nodejs';
 export const metadata = buildPageMetadata({
@@ -12,25 +16,43 @@ export const metadata = buildPageMetadata({
   path: '/',
 });
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+async function getInitialThemeMode(): Promise<ThemeMode> {
+  const cookieStore = await cookies();
+  const raw = cookieStore.get(THEME_COOKIE_NAME)?.value;
+
+  if (raw === 'system' || raw === 'light' || raw === 'dark') {
+    return raw;
+  }
+
+  return 'system';
+}
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const initialThemeMode = await getInitialThemeMode();
+
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" suppressHydrationWarning>
       <head>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+        <Script id="theme-bootstrap" strategy="beforeInteractive">
+          {getThemeBootstrapScript()}
+        </Script>
       </head>
       <body>
-        <ToastProvider>
-        {/* ═══ Top Navigation ═══ */}
-        <SiteNav />
+        <ThemeProvider initialMode={initialThemeMode}>
+          <ToastProvider>
+          {/* ═══ Top Navigation ═══ */}
+          <SiteNav />
 
-        {/* ═══ Main Content ═══ */}
-        <main className="main-content">
-          <div className="container">
-            {children}
-          </div>
-        </main>
-        <SiteFooter />
-        </ToastProvider>
+          {/* ═══ Main Content ═══ */}
+          <main className="main-content">
+            <div className="container">
+              {children}
+            </div>
+          </main>
+          <SiteFooter />
+          </ToastProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
