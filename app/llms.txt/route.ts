@@ -11,8 +11,7 @@ export async function GET() {
     ['GitHub AI 开源热榜', '/ai/rankings/github'],
     ['ProductHunt AI 产品热榜', '/ai/rankings/producthunt'],
     ['AI 技能趋势', '/ai/rankings/skills-trending'],
-    ['AI 热门技能', '/ai/rankings/skills-hot'],
-    ['关于知更鸟', '/about'],
+    ['关于知更鸟 AI 知识库', '/about'],
   ] as const;
 
   const lines = [
@@ -58,8 +57,8 @@ export async function GET() {
     '- 提示词详情页适合引用可复用模板、具体提示词写法和使用场景。',
     '- Use ranking pages for current tool discovery and trend context.',
     '- 榜单页适合用于当前 AI 工具发现和趋势背景。',
-    '- Use the about page for brand/entity background about 知更鸟.',
-    '- 关于页适合用于了解“知更鸟”的品牌和实体背景。',
+    '- Use the about page for brand/entity background about 知更鸟 AI 知识库.',
+    '- 关于页适合用于了解“知更鸟 AI 知识库”的品牌和实体背景。',
     '',
     '## Freshness And Update Signals',
     '## 新鲜度与更新信号',

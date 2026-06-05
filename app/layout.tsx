@@ -1,6 +1,7 @@
 import { ToastProvider } from '@/app/ToastContext';
 import SiteNav from './SiteNav';
 import SiteFooter from './SiteFooter';
+import MobileTabBar from './MobileTabBar';
 import { ThemeProvider } from '@/app/ThemeProvider';
 import { buildPageMetadata } from '@/lib/seo/metadata';
 import { THEME_COOKIE_NAME, getThemeBootstrapScript, type ThemeMode } from '@/lib/theme/theme';
@@ -51,6 +52,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </div>
           </main>
           <SiteFooter />
+          <MobileTabBar />
           </ToastProvider>
         </ThemeProvider>
       </body>

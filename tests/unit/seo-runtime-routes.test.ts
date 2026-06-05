@@ -46,8 +46,11 @@ describe('SEO runtime routes', () => {
         expect(xml).toContain('<loc>https://zgnknowledge.online/ai/articles</loc>');
         expect(xml).toContain('<loc>https://zgnknowledge.online/ai/prompts</loc>');
         expect(xml).toContain('<loc>https://zgnknowledge.online/ai/rankings/github</loc>');
+        expect(xml).toContain('<loc>https://zgnknowledge.online/ai/rankings/producthunt</loc>');
+        expect(xml).toContain('<loc>https://zgnknowledge.online/ai/rankings/skills-trending</loc>');
         expect(xml).toContain('<loc>https://zgnknowledge.online/ai/articles/agent-workflow</loc>');
         expect(xml).toContain('<loc>https://zgnknowledge.online/ai/prompts/101</loc>');
+        expect(xml).not.toContain('/ai/rankings/skills-hot');
         expect(xml).not.toContain('/ai/rankings/topics');
         expect(xml).not.toContain('/ai/prompts/categories');
         expect(xml).not.toContain('/ai/prompts/scenarios');
@@ -83,6 +86,9 @@ describe('SEO runtime routes', () => {
         expect(text).toContain('/ai/articles');
         expect(text).toContain('/ai/prompts');
         expect(text).toContain('/ai/rankings/github');
+        expect(text).toContain('/ai/rankings/producthunt');
+        expect(text).toContain('/ai/rankings/skills-trending');
+        expect(text).not.toContain('/ai/rankings/skills-hot');
         expect(text).toContain('- /ai/rankings/topics/*');
         expect(text).not.toContain('https://zgnknowledge.online/ai/rankings/topics');
     });

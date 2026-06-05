@@ -32,50 +32,11 @@ function getPrefersDark(): boolean {
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
 }
 
-function readCookieMode(): ThemeMode | null {
-    if (typeof document === 'undefined') {
-        return null;
-    }
-
-    const match = document.cookie.match(
-        new RegExp(`(?:^|; )${THEME_COOKIE_NAME.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}=([^;]*)`)
-    );
-
-    if (!match) {
-        return null;
-    }
-
-    const decoded = decodeURIComponent(match[1]);
-    if (decoded === 'system' || decoded === 'light' || decoded === 'dark') {
-        return decoded;
-    }
-
-    return null;
-}
-
 function syncDocumentTheme(resolvedTheme: ThemeResolved): void {
     const doc = document.documentElement;
     doc.dataset.theme = resolvedTheme;
     doc.style.colorScheme = resolvedTheme;
     doc.setAttribute('data-theme', resolvedTheme);
-}
-
-function readInitialMode(fallback: ThemeMode): ThemeMode {
-    if (typeof window === 'undefined') {
-        return fallback;
-    }
-
-    const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
-    if (stored === 'system' || stored === 'light' || stored === 'dark') {
-        return stored;
-    }
-
-    const cookieMode = readCookieMode();
-    if (cookieMode) {
-        return cookieMode;
-    }
-
-    return fallback;
 }
 
 function writeThemePreference(mode: ThemeMode): void {
@@ -90,7 +51,7 @@ export function ThemeProvider({
     children: ReactNode;
     initialMode?: ThemeMode;
 }) {
-    const [mode, setMode] = useState<ThemeMode>(() => readInitialMode(initialMode));
+    const [mode, setMode] = useState<ThemeMode>(() => initialMode);
     const [prefersDark, setPrefersDark] = useState(getPrefersDark);
 
     useEffect(() => {

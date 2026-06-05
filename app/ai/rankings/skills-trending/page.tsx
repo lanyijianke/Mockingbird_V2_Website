@@ -10,11 +10,6 @@ export const metadata = buildRankingMetadata(
 );
 const INTERNAL_LINKS = [
     {
-        href: '/ai/rankings/skills-hot',
-        title: '查看 Skills Hot',
-        description: '对照长期关注度和短期爆发热度，识别哪些技能只是短暂上升，哪些已经进入主流。',
-    },
-    {
         href: '/ai/prompts?category=gemini-3',
         title: 'Gemini 3 提示词',
         description: '把技能热度和提示词模板结合起来，快速验证是否有真实工作流价值。',
@@ -110,7 +105,7 @@ export default async function SkillsTrendingPage() {
                     <h2 className="section-title">趋势线索延伸</h2>
                 </div>
                 <p className="zone-subtitle" style={{ marginBottom: '1.25rem' }}>
-                    Skills Trending 更偏向“正在被讨论”的信号。继续查看 Hot、产品热榜和提示词模板，可以把关注度变成具体动作。
+                    Skills Trending 更偏向“正在被讨论”的信号。继续查看产品热榜和提示词模板，可以把关注度变成具体动作。
                 </p>
                 <div
                     style={{

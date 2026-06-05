@@ -3,7 +3,7 @@ import { getGitHubTrendings, getProductHuntRankings, getSkillsShRankings } from 
 
 export const runtime = 'nodejs';
 
-// GET /api/rankings?type=github|producthunt|skills-trending|skills-hot
+// GET /api/rankings?type=github|producthunt|skills-trending
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'github';
@@ -19,10 +19,6 @@ export async function GET(request: NextRequest) {
         }
         case 'skills-trending': {
             const data = await getSkillsShRankings('trending');
-            return NextResponse.json({ success: true, data });
-        }
-        case 'skills-hot': {
-            const data = await getSkillsShRankings('hot');
             return NextResponse.json({ success: true, data });
         }
         default:

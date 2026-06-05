@@ -25,7 +25,6 @@ describe('page cache policy alignment', () => {
         const githubRankingPage = await import('@/app/ai/rankings/github/page');
         const productHuntRankingPage = await import('@/app/ai/rankings/producthunt/page');
         const skillsTrendingPage = await import('@/app/ai/rankings/skills-trending/page');
-        const skillsHotPage = await import('@/app/ai/rankings/skills-hot/page');
 
         expect(promptDetailPage.revalidate).toBe(cachePageRevalidate.promptDetail);
         expect(aiArticlePage.revalidate).toBe(cachePageRevalidate.articleDetail);
@@ -33,6 +32,5 @@ describe('page cache policy alignment', () => {
         expect(githubRankingPage.revalidate).toBe(cachePageRevalidate.rankings);
         expect(productHuntRankingPage.revalidate).toBe(cachePageRevalidate.rankings);
         expect(skillsTrendingPage.revalidate).toBe(cachePageRevalidate.rankings);
-        expect(skillsHotPage.revalidate).toBe(cachePageRevalidate.rankings);
     });
 });

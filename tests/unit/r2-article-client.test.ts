@@ -13,6 +13,9 @@ describe('r2 article client', () => {
     const originalAccountId = process.env.KNOWLEDGE_R2_ACCOUNT_ID;
     const originalAccessKeyId = process.env.KNOWLEDGE_R2_ACCESS_KEY_ID;
     const originalSecretAccessKey = process.env.KNOWLEDGE_R2_SECRET_ACCESS_KEY;
+    const originalLegacyAccountId = process.env.R2_ACCOUNT_ID;
+    const originalLegacyAccessKeyId = process.env.R2_ACCESS_KEY_ID;
+    const originalLegacySecretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
 
     afterEach(() => {
         if (originalAccountId === undefined) delete process.env.KNOWLEDGE_R2_ACCOUNT_ID;
@@ -23,6 +26,15 @@ describe('r2 article client', () => {
 
         if (originalSecretAccessKey === undefined) delete process.env.KNOWLEDGE_R2_SECRET_ACCESS_KEY;
         else process.env.KNOWLEDGE_R2_SECRET_ACCESS_KEY = originalSecretAccessKey;
+
+        if (originalLegacyAccountId === undefined) delete process.env.R2_ACCOUNT_ID;
+        else process.env.R2_ACCOUNT_ID = originalLegacyAccountId;
+
+        if (originalLegacyAccessKeyId === undefined) delete process.env.R2_ACCESS_KEY_ID;
+        else process.env.R2_ACCESS_KEY_ID = originalLegacyAccessKeyId;
+
+        if (originalLegacySecretAccessKey === undefined) delete process.env.R2_SECRET_ACCESS_KEY;
+        else process.env.R2_SECRET_ACCESS_KEY = originalLegacySecretAccessKey;
 
         vi.clearAllMocks();
         vi.resetModules();
@@ -53,10 +65,42 @@ describe('r2 article client', () => {
         await expect(readR2ObjectText('knowledge-articles', 'ai/manifest.json')).resolves.toBe('{"articles":[]}');
     });
 
+    it('falls back to legacy R2 credential env names', async () => {
+        delete process.env.KNOWLEDGE_R2_ACCOUNT_ID;
+        delete process.env.KNOWLEDGE_R2_ACCESS_KEY_ID;
+        delete process.env.KNOWLEDGE_R2_SECRET_ACCESS_KEY;
+        process.env.R2_ACCOUNT_ID = 'legacy-account-id';
+        process.env.R2_ACCESS_KEY_ID = 'legacy-access-key';
+        process.env.R2_SECRET_ACCESS_KEY = 'legacy-secret-key';
+
+        const send = vi.fn(async () => ({
+            Body: {
+                transformToString: vi.fn(async () => '{"articles":[]}'),
+            },
+        }));
+
+        vi.mocked(S3Client).mockImplementation(function mockS3Client() {
+            return { send } as unknown as S3Client;
+        });
+
+        const { readR2ObjectText } = await import('@/lib/articles/r2-client');
+        await expect(readR2ObjectText('knowledge-articles', 'ai/manifest.json')).resolves.toBe('{"articles":[]}');
+        expect(vi.mocked(S3Client)).toHaveBeenCalledWith(expect.objectContaining({
+            endpoint: 'https://legacy-account-id.r2.cloudflarestorage.com',
+            credentials: {
+                accessKeyId: 'legacy-access-key',
+                secretAccessKey: 'legacy-secret-key',
+            },
+        }));
+    });
+
     it('fails clearly when R2 credentials are missing', async () => {
         delete process.env.KNOWLEDGE_R2_ACCOUNT_ID;
         delete process.env.KNOWLEDGE_R2_ACCESS_KEY_ID;
         delete process.env.KNOWLEDGE_R2_SECRET_ACCESS_KEY;
+        delete process.env.R2_ACCOUNT_ID;
+        delete process.env.R2_ACCESS_KEY_ID;
+        delete process.env.R2_SECRET_ACCESS_KEY;
 
         const { readR2ObjectText } = await import('@/lib/articles/r2-client');
         await expect(readR2ObjectText('bucket', 'key')).rejects.toThrow(/R2 credentials/i);

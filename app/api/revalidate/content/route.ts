@@ -35,7 +35,6 @@ function isRankingKind(value: unknown): value is RankingKind {
         value === 'github'
         || value === 'producthunt'
         || value === 'skills-trending'
-        || value === 'skills-hot'
         || value === 'all'
     );
 }

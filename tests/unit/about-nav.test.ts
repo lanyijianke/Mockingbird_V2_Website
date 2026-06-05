@@ -14,16 +14,22 @@ vi.mock('next/navigation', () => ({
     }),
 }));
 
+vi.mock('next/headers', () => ({
+    cookies: async () => ({
+        get: () => undefined,
+    }),
+}));
+
 vi.mock('@/app/NavAuthButton', () => ({
     default: () => null,
 }));
 
 describe('about navigation link', () => {
-    it('uses the same AI navigation menu on the about page', () => {
+    it('uses the same AI navigation menu on the about page', async () => {
         mockPathname.mockReturnValue('/about');
 
         const html = renderToStaticMarkup(
-            RootLayout({
+            await RootLayout({
                 children: createElement('div', null, 'test page'),
             })
         );

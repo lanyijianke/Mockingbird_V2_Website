@@ -3,6 +3,7 @@ import { loadArticleSourceConfigs } from '@/lib/articles/source-config';
 
 const ORIGINAL_ENV = process.env.ARTICLE_LOCAL_SOURCES;
 const ORIGINAL_R2_ENV = process.env.KNOWLEDGE_ARTICLE_R2_SOURCES;
+const ORIGINAL_LEGACY_R2_ENV = process.env.ARTICLE_R2_SOURCES;
 
 describe('article source config', () => {
     afterEach(() => {
@@ -16,6 +17,12 @@ describe('article source config', () => {
             process.env.KNOWLEDGE_ARTICLE_R2_SOURCES = ORIGINAL_R2_ENV;
         } else {
             delete process.env.KNOWLEDGE_ARTICLE_R2_SOURCES;
+        }
+
+        if (typeof ORIGINAL_LEGACY_R2_ENV === 'string') {
+            process.env.ARTICLE_R2_SOURCES = ORIGINAL_LEGACY_R2_ENV;
+        } else {
+            delete process.env.ARTICLE_R2_SOURCES;
         }
     });
 
@@ -55,6 +62,32 @@ describe('article source config', () => {
 
     it('loads R2 article sources from KNOWLEDGE_ARTICLE_R2_SOURCES', () => {
         process.env.KNOWLEDGE_ARTICLE_R2_SOURCES = JSON.stringify([
+            {
+                site: 'ai',
+                source: 'web-article',
+                bucket: 'knowledge-articles',
+                prefix: 'ai',
+                manifestPath: 'manifest.json',
+                publicBaseUrl: 'https://assets.zgnknowledge.online/ai',
+            },
+        ]);
+
+        expect(loadArticleSourceConfigs()).toEqual([
+            {
+                type: 'r2',
+                site: 'ai',
+                source: 'web-article',
+                bucket: 'knowledge-articles',
+                prefix: 'ai',
+                manifestPath: 'manifest.json',
+                publicBaseUrl: 'https://assets.zgnknowledge.online/ai',
+            },
+        ]);
+    });
+
+    it('falls back to legacy ARTICLE_R2_SOURCES when the normalized env is missing', () => {
+        delete process.env.KNOWLEDGE_ARTICLE_R2_SOURCES;
+        process.env.ARTICLE_R2_SOURCES = JSON.stringify([
             {
                 site: 'ai',
                 source: 'web-article',

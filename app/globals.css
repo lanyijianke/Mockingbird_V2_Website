@@ -23,6 +23,9 @@
   --theme-accent-hover: #9ae0ef;
   --theme-accent-soft: rgba(192, 240, 251, 0.12);
   --theme-accent-border: rgba(192, 240, 251, 0.22);
+  --theme-gh: #58a6ff;
+  --theme-ph: #ff6154;
+  --theme-skills: #f0883e;
   --theme-shadow: 0 18px 42px rgba(0, 0, 0, 0.32);
   --theme-shadow-soft: 0 10px 28px rgba(0, 0, 0, 0.24);
   --theme-nav-bg: rgba(11, 11, 13, 0.94);
@@ -89,6 +92,9 @@ html[data-theme='light'] {
   --theme-accent-hover: #6f471f;
   --theme-accent-soft: rgba(139, 90, 43, 0.12);
   --theme-accent-border: rgba(139, 90, 43, 0.18);
+  --theme-gh: #4f89d8;
+  --theme-ph: #d65b50;
+  --theme-skills: #b56d2e;
   --theme-shadow: 0 18px 42px rgba(100, 76, 39, 0.12);
   --theme-shadow-soft: 0 10px 24px rgba(100, 76, 39, 0.1);
   --theme-nav-bg: rgba(246, 236, 216, 0.92);
@@ -153,6 +159,12 @@ h3:focus-visible {
   padding: 2rem 2rem 4rem;
 }
 
+@media (max-width: 768px) {
+  .main-content {
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  }
+}
+
 .container {
   max-width: var(--container-max);
   margin: 0 auto;
@@ -174,6 +186,28 @@ h3:focus-visible {
 
 .glass-card:hover {
   background: var(--glass-bg-hover);
+}
+
+/* ═══════ Theme Logos ═══════ */
+.theme-logo {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.theme-logo-dark {
+  display: inline-flex;
+}
+
+.theme-logo-light {
+  display: none;
+}
+
+html[data-theme='light'] .theme-logo-dark {
+  display: none;
+}
+
+html[data-theme='light'] .theme-logo-light {
+  display: inline-flex;
 }
 
 /* ═══════ Scrollbar ═══════ */
@@ -331,7 +365,7 @@ h3:focus-visible {
 
 @media (max-width: 768px) {
   .site-footer {
-    padding: 1.75rem 1.25rem;
+    padding: 1.25rem 1.25rem 5rem;
   }
 
   .site-footer-inner {
@@ -340,8 +374,76 @@ h3:focus-visible {
   }
 
   .site-footer-nav {
+    display: none;
+  }
+
+  .site-footer-description {
+    max-width: none;
+    margin-top: 0.75rem;
+    font-size: 0.92rem;
+    line-height: 1.65;
+  }
+
+  .site-footer-nav {
     grid-template-columns: 1fr;
     gap: 1.15rem;
+  }
+}
+
+/* ═══════ Mobile Tab Bar ═══════ */
+.mobile-tab-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1200;
+  display: none;
+  align-items: stretch;
+  gap: 0.35rem;
+  padding: 0.65rem 0.75rem calc(0.65rem + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--glass-border);
+  background: color-mix(in srgb, var(--nav-bg) 92%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.08);
+}
+
+.mobile-tab-item {
+  flex: 1 1 0;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.8rem;
+  padding: 0.55rem 0.25rem;
+  border-radius: 999px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.mobile-tab-item:hover {
+  color: var(--text-main);
+  background: var(--hover-bg);
+}
+
+.mobile-tab-item.active {
+  color: var(--primary);
+  background: var(--theme-accent-soft);
+  box-shadow: inset 0 0 0 1px var(--theme-accent-border);
+}
+
+.mobile-tab-label {
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .mobile-tab-bar {
+    display: flex;
   }
 }
 

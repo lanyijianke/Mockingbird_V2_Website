@@ -2,8 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
     THEME_COOKIE_NAME,
     THEME_STORAGE_KEY,
-    getBrandLogoSrc,
-    getFooterLogoSrc,
     getThemeBootstrapScript,
     resolveThemeMode,
 } from '@/lib/theme/theme';
@@ -14,13 +12,6 @@ describe('theme helpers', () => {
         expect(resolveThemeMode('system', false)).toBe('light');
         expect(resolveThemeMode('light', true)).toBe('light');
         expect(resolveThemeMode('dark', false)).toBe('dark');
-    });
-
-    it('returns theme-aware brand logos', () => {
-        expect(getBrandLogoSrc('dark')).toBe('/images/logo-nav.png');
-        expect(getBrandLogoSrc('light')).toBe('/images/logo-nav-light.png');
-        expect(getFooterLogoSrc('dark')).toBe('/images/logo-nav.png');
-        expect(getFooterLogoSrc('light')).toBe('/images/logo-light.png');
     });
 
     it('emits a bootstrap script that can restore the saved theme before paint', () => {

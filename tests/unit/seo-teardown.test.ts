@@ -21,6 +21,7 @@ describe('legacy SEO teardown', () => {
             'app/ai/prompts/scenarios/[slug]/page.tsx',
             'app/ai/rankings/topics/page.tsx',
             'app/ai/rankings/topics/[slug]/page.tsx',
+            'app/ai/rankings/skills-hot/page.tsx',
         ].forEach((path) => {
             expect(existsSync(repoPath(path)), path).toBe(false);
         });
@@ -51,6 +52,7 @@ describe('legacy SEO teardown', () => {
         ].map(readRepoFile).join('\n');
 
         expect(activeFiles).not.toContain('href="/ai/rankings/topics"');
+        expect(activeFiles).not.toContain('href="/ai/rankings/skills-hot"');
         expect(activeFiles).not.toContain('/ai/prompts/categories/');
         expect(activeFiles).not.toContain('/ai/articles/categories/');
     });

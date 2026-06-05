@@ -100,7 +100,7 @@ function normalizeR2Config(value: unknown, index: number): R2ArticleSourceConfig
 
 export function loadArticleSourceConfigs(
     rawLocalConfig: string | undefined = process.env.ARTICLE_LOCAL_SOURCES,
-    rawR2Config: string | undefined = process.env.KNOWLEDGE_ARTICLE_R2_SOURCES,
+    rawR2Config: string | undefined = process.env.KNOWLEDGE_ARTICLE_R2_SOURCES || process.env.ARTICLE_R2_SOURCES,
 ): ArticleSourceConfig[] {
     const localConfigs = parseConfigArray(rawLocalConfig, 'ARTICLE_LOCAL_SOURCES')
         .map((entry, index) => normalizeLocalConfig(entry, index));

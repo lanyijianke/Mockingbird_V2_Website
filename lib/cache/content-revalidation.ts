@@ -4,7 +4,7 @@ import { buildAbsoluteUrl } from '@/lib/site-config';
 import { cacheTags } from '@/lib/cache/keys';
 
 export type ArticleSite = 'ai' | 'finance';
-export type RankingKind = 'github' | 'producthunt' | 'skills-trending' | 'skills-hot' | 'all';
+export type RankingKind = 'github' | 'producthunt' | 'skills-trending' | 'all';
 
 export type ContentRevalidationEvent =
     | { type: 'article'; action: 'publish' | 'update' | 'unpublish' | 'manual'; site: ArticleSite; slug?: string }
@@ -27,7 +27,6 @@ const RANKING_PATHS: Record<Exclude<RankingKind, 'all'>, string> = {
     github: '/ai/rankings/github',
     producthunt: '/ai/rankings/producthunt',
     'skills-trending': '/ai/rankings/skills-trending',
-    'skills-hot': '/ai/rankings/skills-hot',
 };
 
 function unique(values: string[]): string[] {

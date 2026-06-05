@@ -33,15 +33,6 @@ export const cachePolicies = {
         replaceOnEmptyResult: false,
         warmOnStartup: true,
     },
-    rankingsSkillsHot: {
-        id: 'rankings.skills.hot',
-        namespace: 'rankings.skills.hot',
-        ttlMs: TWO_HOURS_MS,
-        maxEntries: 1,
-        allowStaleOnError: true,
-        replaceOnEmptyResult: false,
-        warmOnStartup: true,
-    },
     promptsTop: {
         id: 'prompts.top',
         namespace: 'prompts.top',
@@ -80,7 +71,6 @@ export const rankingCachePolicies = [
     cachePolicies.rankingsGithub,
     cachePolicies.rankingsProductHunt,
     cachePolicies.rankingsSkillsTrending,
-    cachePolicies.rankingsSkillsHot,
 ] as const;
 
 export const cachePageRevalidate = {

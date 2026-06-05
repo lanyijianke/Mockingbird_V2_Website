@@ -24,7 +24,7 @@ const HOMEPAGE_PROMPT_CATEGORY_PRIORITY = [
   'seedance-2',
   'gpt-image-15',
 ];
-const HOMEPAGE_RANKING_COUNT = 4;
+const HOMEPAGE_RANKING_COUNT = 3;
 
 function sortPromptCategoriesForHomepage<T extends { code: string }>(categories: T[]): T[] {
   return [...categories].sort((left, right) => {

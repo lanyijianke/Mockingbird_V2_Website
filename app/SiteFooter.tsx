@@ -1,10 +1,6 @@
-'use client';
-
 import Link from 'next/link';
 import Image from 'next/image';
 import { getSiteBrandConfig } from '@/lib/site-config';
-import { useTheme } from '@/app/ThemeProvider';
-import { getFooterLogoSrc } from '@/lib/theme/theme';
 
 const CONTENT_LINKS = [
   { href: '/ai/articles', label: '文章' },
@@ -15,7 +11,6 @@ const RANKING_LINKS = [
   { href: '/ai/rankings/github', label: 'GitHub 热榜' },
   { href: '/ai/rankings/producthunt', label: 'ProductHunt' },
   { href: '/ai/rankings/skills-trending', label: '技能趋势' },
-  { href: '/ai/rankings/skills-hot', label: '热门技能' },
 ];
 
 const SITE_LINKS = [
@@ -25,21 +20,32 @@ const SITE_LINKS = [
 
 export default function SiteFooter() {
   const brand = getSiteBrandConfig();
-  const { resolvedTheme } = useTheme();
 
   return (
     <footer className="site-footer">
       <div className="site-footer-inner">
         <div className="site-footer-brand">
           <Link href="/" className="site-footer-lockup" aria-label={brand.brandName}>
-            <Image
-              src={getFooterLogoSrc(resolvedTheme)}
-              alt=""
-              width={44}
-              height={44}
-              className="site-footer-logo"
-              unoptimized
-            />
+            <span className="theme-logo theme-logo-dark" aria-hidden="true">
+              <Image
+                src="/images/logo-nav.png"
+                alt=""
+                width={44}
+                height={44}
+                className="site-footer-logo"
+                unoptimized
+              />
+            </span>
+            <span className="theme-logo theme-logo-light" aria-hidden="true">
+              <Image
+                src="/images/logo-light.png"
+                alt=""
+                width={44}
+                height={44}
+                className="site-footer-logo"
+                unoptimized
+              />
+            </span>
             <span className="site-footer-title">{brand.brandName}</span>
           </Link>
           <p className="site-footer-description">

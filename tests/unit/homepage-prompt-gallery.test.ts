@@ -145,6 +145,21 @@ describe('homepage prompt gallery', () => {
         expect(html.indexOf('GPT Image 2')).toBeLessThan(html.indexOf('Gemini 3'));
     });
 
+    it('shows the live homepage summary with 3 public ranking pages', async () => {
+        mockGetArticleCount.mockResolvedValue(12);
+        mockQueryScalar.mockResolvedValue(3456);
+
+        const { default: HomePage } = await import('@/app/page');
+        const html = renderToStaticMarkup(await HomePage());
+
+        expect(html).toContain('已收录');
+        expect(html).toContain('<strong>12</strong>');
+        expect(html).toContain('<strong>3,456</strong>');
+        expect(html).toContain('<strong>3</strong>');
+        expect(html).toContain('个榜单');
+        expect(html).not.toContain('<strong>4</strong>个榜单');
+    });
+
     it('keeps the desktop hero article as the first mobile editorial item', () => {
         const css = fs.readFileSync(globalsCssPath, 'utf-8');
         const mobileResponsiveBlock = css.match(/@media \(max-width: 768px\) \{[\s\S]*?\.category-group-list\s*\{[\s\S]*?\}\s*\}/);

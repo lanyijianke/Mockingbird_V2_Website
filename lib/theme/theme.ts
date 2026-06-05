@@ -4,30 +4,12 @@ export type ThemeResolved = 'light' | 'dark';
 export const THEME_STORAGE_KEY = 'mockingbird-theme-mode';
 export const THEME_COOKIE_NAME = 'mockingbird_theme_mode';
 
-const BRAND_LOGOS: Record<ThemeResolved, string> = {
-    dark: '/images/logo-nav.png',
-    light: '/images/logo-nav-light.png',
-};
-
-const FOOTER_LOGOS: Record<ThemeResolved, string> = {
-    dark: '/images/logo-nav.png',
-    light: '/images/logo-light.png',
-};
-
 export function resolveThemeMode(mode: ThemeMode, prefersDark: boolean): ThemeResolved {
     if (mode === 'light' || mode === 'dark') {
         return mode;
     }
 
     return prefersDark ? 'dark' : 'light';
-}
-
-export function getBrandLogoSrc(theme: ThemeResolved): string {
-    return BRAND_LOGOS[theme];
-}
-
-export function getFooterLogoSrc(theme: ThemeResolved): string {
-    return FOOTER_LOGOS[theme];
 }
 
 export function getThemeBootstrapScript(): string {

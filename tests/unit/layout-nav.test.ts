@@ -37,6 +37,14 @@ describe('root layout navigation', () => {
         expect(navRightMatch?.[1]).not.toContain('AI 提示词');
         expect(navRightMatch?.[1]).not.toContain('href="/about"');
         expect(navRightMatch?.[1]).not.toContain('href="/finance/articles"');
+        expect(html).toContain('theme-logo-dark');
+        expect(html).toContain('theme-logo-light');
+        expect(html).toContain('mobile-tab-bar');
+        expect(html).toContain('mobile-tab-item');
+        expect(html).toContain('首页');
+        expect(html).toContain('文章');
+        expect(html).toContain('提示词');
+        expect(html).toContain('热榜');
         expect(html).toContain('theme-toggle');
         expect(html).not.toContain('学社');
         expect(html).not.toContain('academy-link');
@@ -70,7 +78,8 @@ describe('root layout navigation', () => {
         expect(html).toContain('热榜');
         expect(html).toContain('href="/ai/rankings/producthunt"');
         expect(html).toContain('href="/ai/rankings/skills-trending"');
-        expect(html).toContain('href="/ai/rankings/skills-hot"');
+        expect(html).not.toContain('href="/ai/rankings/skills-hot"');
+        expect(html).not.toContain('Skills Hot');
         expect(html).toContain('nav-desktop-only');
     });
 });

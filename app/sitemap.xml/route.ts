@@ -10,7 +10,6 @@ const STATIC_PATHS = [
   '/ai/rankings/github',
   '/ai/rankings/producthunt',
   '/ai/rankings/skills-trending',
-  '/ai/rankings/skills-hot',
   '/about',
   '/finance',
   '/finance/articles',

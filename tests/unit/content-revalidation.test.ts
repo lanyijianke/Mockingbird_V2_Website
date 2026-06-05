@@ -102,7 +102,6 @@ describe('content revalidation', () => {
             '/ai/rankings/github',
             '/ai/rankings/producthunt',
             '/ai/rankings/skills-trending',
-            '/ai/rankings/skills-hot',
         ]);
         expect(result.warmPaths).toEqual(result.paths);
         expect(result.tags).toEqual(['rankings']);
@@ -127,7 +126,6 @@ describe('content revalidation', () => {
             '/ai/rankings/github',
             '/ai/rankings/producthunt',
             '/ai/rankings/skills-trending',
-            '/ai/rankings/skills-hot',
             '/sitemap.xml',
         ]);
         expect(new Set(result.paths).size).toBe(result.paths.length);

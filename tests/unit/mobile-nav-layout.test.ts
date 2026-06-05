@@ -8,16 +8,16 @@ const navCssPath = path.resolve(
 );
 
 describe('mobile navigation layout', () => {
-    it('keeps the mobile nav scrollable instead of shrinking link text indefinitely', () => {
+    it('hides the desktop-heavy mobile nav controls instead of forcing a scroll rail', () => {
         const css = fs.readFileSync(navCssPath, 'utf-8');
-        const mobileNavBlock = css.match(/@media \(max-width: 768px\) \{[\s\S]*?\.nav-dropdown-arrow\s*\{[\s\S]*?\}\s*\}/);
+        const mobileNavBlock = css.match(/@media \(max-width: 768px\) \{[\s\S]*?\.theme-toggle\s*\{[\s\S]*?\}\s*\}/);
 
         expect(mobileNavBlock?.[0]).toContain('.top-nav');
-        expect(mobileNavBlock?.[0]).toContain('overflow-x: auto;');
         expect(mobileNavBlock?.[0]).toContain('.nav-right');
-        expect(mobileNavBlock?.[0]).toContain('white-space: nowrap;');
+        expect(mobileNavBlock?.[0]).toContain('display: none;');
         expect(mobileNavBlock?.[0]).toContain('.nav-mobile-only');
-        expect(mobileNavBlock?.[0]).not.toContain('.nav-mobile-rankings-menu');
+        expect(mobileNavBlock?.[0]).toContain('.nav-desktop-only');
+        expect(mobileNavBlock?.[0]).toContain('.theme-toggle');
     });
 
     it('keeps the mobile-only nav utility visible without the old trigger styles', () => {

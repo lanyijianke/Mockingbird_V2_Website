@@ -97,7 +97,7 @@
 
 /* ═══════ GitHub Trending — Blue Theme ═══════ */
 .zone-title-gh {
-  color: #58a6ff;
+  color: var(--theme-gh);
 }
 
 .trending-list {
@@ -117,12 +117,12 @@
 
 .trending-card:hover {
   transform: translateX(4px);
-  border-color: rgba(88, 166, 255, 0.2);
+  border-color: color-mix(in srgb, var(--theme-gh) 20%, transparent);
 }
 
 .rank-gh {
-  background: #58a6ff;
-  box-shadow: 0 0 12px rgba(88, 166, 255, 0.4);
+  background: var(--theme-gh);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--theme-gh) 40%, transparent);
 }
 
 .repo-header {
@@ -136,7 +136,7 @@
 .repo-name {
   font-size: 1.05rem;
   font-weight: 700;
-  color: #58a6ff;
+  color: var(--theme-gh);
   margin: 0;
   font-family: var(--font-mono);
 }
@@ -198,17 +198,17 @@
 }
 
 .stat-today {
-  color: #f0883e;
+  color: var(--theme-skills);
   font-weight: 700;
 }
 
 .btn-visit-gh:hover {
-  color: #58a6ff;
+  color: var(--theme-gh);
 }
 
 /* ═══════ ProductHunt — Red/Orange Theme ═══════ */
 .zone-title-ph {
-  color: #ff6154;
+  color: var(--theme-ph);
 }
 
 .ph-grid {
@@ -228,7 +228,7 @@
 
 .ph-card:hover {
   transform: translateY(-6px);
-  border-color: rgba(255, 97, 84, 0.2);
+  border-color: color-mix(in srgb, var(--theme-ph) 20%, transparent);
 }
 
 .ph-card .rank-badge {
@@ -238,9 +238,9 @@
 }
 
 .rank-ph {
-  background: #ff6154;
+  background: var(--theme-ph);
   color: #fff;
-  box-shadow: 0 0 12px rgba(255, 97, 84, 0.4);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--theme-ph) 40%, transparent);
 }
 
 .ph-header {
@@ -263,11 +263,11 @@
   width: 52px;
   height: 52px;
   border-radius: 10px;
-  background: rgba(255, 97, 84, 0.1);
+  background: color-mix(in srgb, var(--theme-ph) 10%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ff6154;
+  color: var(--theme-ph);
   font-size: 1.2rem;
   flex-shrink: 0;
 }
@@ -299,7 +299,7 @@
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  color: #ff6154;
+  color: var(--theme-ph);
 }
 
 .score-value {
@@ -315,12 +315,12 @@
 }
 
 .btn-visit-ph:hover {
-  color: #ff6154;
+  color: var(--theme-ph);
 }
 
 /* ═══════ Skills.sh Trending — Orange Theme ═══════ */
 .zone-title-skills {
-  color: #f0883e;
+  color: var(--theme-skills);
 }
 
 .skills-list {
@@ -339,12 +339,12 @@
 }
 
 .skills-card:hover {
-  border-color: rgba(240, 136, 62, 0.2);
+  border-color: color-mix(in srgb, var(--theme-skills) 20%, transparent);
 }
 
 .rank-skills {
-  background: #f0883e;
-  box-shadow: 0 0 12px rgba(240, 136, 62, 0.4);
+  background: var(--theme-skills);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--theme-skills) 40%, transparent);
 }
 
 .skills-header {
@@ -364,7 +364,7 @@
 }
 
 .skills-name i {
-  color: #f0883e;
+  color: var(--theme-skills);
 }
 
 .skills-name a {
@@ -373,13 +373,13 @@
 }
 
 .skills-name a:hover {
-  color: #f0883e;
+  color: var(--theme-skills);
 }
 
 .install-count {
   font-family: var(--font-mono);
   font-size: 0.8rem;
-  color: #f0883e;
+  color: var(--theme-skills);
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -414,67 +414,6 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   opacity: 0.8;
-}
-
-/* ═══════ Skills.sh Hot — Purple Theme ═══════ */
-.zone-title-hot {
-  color: #e040fb;
-}
-
-.skills-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.2rem;
-}
-
-.skills-hot-card {
-  position: relative;
-  padding: 2rem 1.5rem 1.5rem;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  transition: all 0.3s ease;
-}
-
-.skills-hot-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(224, 64, 251, 0.2);
-}
-
-.skills-hot-card .rank-badge {
-  top: -0.6rem;
-  left: 1.2rem;
-  transform: none;
-}
-
-.rank-hot {
-  background: #e040fb;
-  box-shadow: 0 0 12px rgba(224, 64, 251, 0.4);
-}
-
-.skills-hot-name {
-  font-size: 1rem;
-  font-weight: 700;
-  margin: 0 0 0.5rem;
-}
-
-.skills-hot-name a {
-  color: var(--text-main);
-  text-decoration: none;
-}
-
-.skills-hot-name a:hover {
-  color: #e040fb;
-}
-
-.skills-hot-installs {
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  color: #e040fb;
-  margin-top: 0.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
 }
 
 /* ═══════ Rankings responsive ═══════ */

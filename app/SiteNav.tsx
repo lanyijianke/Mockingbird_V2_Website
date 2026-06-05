@@ -5,14 +5,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { getArticleListPath } from '@/lib/articles/article-route-paths';
 import ThemeToggle from '@/app/ThemeToggle';
-import { getBrandLogoSrc } from '@/lib/theme/theme';
-import { useTheme } from '@/app/ThemeProvider';
 
 const NAV_BRAND_NAME = '知更鸟 AI 知识库';
 
 export default function SiteNav() {
   const pathname = usePathname();
-  const { resolvedTheme } = useTheme();
 
   const isRootHome = pathname === '/';
   const isAbout = pathname.startsWith('/about');
@@ -30,15 +27,28 @@ export default function SiteNav() {
       <div className="nav-center">
         <div className="nav-divider" />
         <Link href={brandHref} className="nav-brand-lockup" aria-label={NAV_BRAND_NAME}>
-          <Image
-            src={getBrandLogoSrc(resolvedTheme)}
-            alt=""
-            width={42}
-            height={42}
-            className="nav-brand-logo"
-            priority
-            unoptimized
-          />
+          <span className="theme-logo theme-logo-dark" aria-hidden="true">
+            <Image
+              src="/images/logo-nav.png"
+              alt=""
+              width={42}
+              height={42}
+              className="nav-brand-logo"
+              priority
+              unoptimized
+            />
+          </span>
+          <span className="theme-logo theme-logo-light" aria-hidden="true">
+            <Image
+              src="/images/logo-nav-light.png"
+              alt=""
+              width={42}
+              height={42}
+              className="nav-brand-logo"
+              priority
+              unoptimized
+            />
+          </span>
           <span className="nav-brand-name">{NAV_BRAND_NAME}</span>
         </Link>
         <div className="nav-divider" />
@@ -63,20 +73,16 @@ export default function SiteNav() {
               </Link>
               <div className="nav-dropdown-menu">
                 <Link href="/ai/rankings/github" className="nav-dropdown-item">
-                  <i className="bi bi-github" style={{ color: '#58a6ff' }} />
+                  <i className="bi bi-github" style={{ color: 'var(--theme-gh)' }} />
                   <span>GitHub Trending</span>
                 </Link>
                 <Link href="/ai/rankings/producthunt" className="nav-dropdown-item">
-                  <i className="bi bi-rocket-takeoff" style={{ color: '#ff6154' }} />
+                  <i className="bi bi-rocket-takeoff" style={{ color: 'var(--theme-ph)' }} />
                   <span>ProductHunt</span>
                 </Link>
                 <Link href="/ai/rankings/skills-trending" className="nav-dropdown-item">
-                  <i className="bi bi-fire" style={{ color: '#f0883e' }} />
+                  <i className="bi bi-fire" style={{ color: 'var(--theme-skills)' }} />
                   <span>Skills Trending</span>
-                </Link>
-                <Link href="/ai/rankings/skills-hot" className="nav-dropdown-item">
-                  <i className="bi bi-lightning-charge" style={{ color: '#a371f7' }} />
-                  <span>Skills Hot</span>
                 </Link>
               </div>
             </div>
