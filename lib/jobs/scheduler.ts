@@ -1,21 +1,21 @@
 import cron from 'node-cron';
-import { rankingCachePolicies } from '@/lib/cache/policies';
+import { buildAbsoluteUrl } from '@/lib/site-config';
+import type { ContentRevalidationEvent } from '@/lib/cache/content-revalidation';
 import { syncAllAsync as promptSourceSync } from '@/lib/pipelines/prompt-readme-sync';
-import { refreshAllRankings } from '@/lib/services/ranking-cache';
 import { logger } from '@/lib/utils/logger';
 
 // ════════════════════════════════════════════════════════════════
 // 统一 node-cron 调度器 — 替代 Knowledge 的 Quartz Jobs
 //
 // 调度策略：
-//   PromptSyncJob        → 每 60 秒   (README/source 提示词同步)
-//   RankingSyncJob       → 每 2 小时  (直采 4 个排行榜并缓存)
+//   PromptSyncJob        → 每 2 小时  (README/source 提示词同步)
+//   RankingSyncJob       → 每 2 小时  (重验证并预热榜单 ISR 页面)
 //
 // 通过 instrumentation.ts 在服务端进程启动时自动调用 startScheduler()。
 // ════════════════════════════════════════════════════════════════
 
 const JOB_INTERVALS = {
-    promptSync: process.env.JOB_PROMPT_SYNC_CRON || '30 */1 * * * *',       // 每分钟第 30 秒
+    promptSync: process.env.JOB_PROMPT_SYNC_CRON || '30 0 */2 * * *',       // 每 2 小时的第 30 秒
     rankingSync: process.env.JOB_RANKING_SYNC_CRON || '0 */2 * * *',        // 每 2 小时
 };
 
@@ -40,6 +40,44 @@ async function runWithLock(name: string, fn: () => Promise<void>): Promise<void>
     }
 }
 
+function getAdminToken(): string {
+    return process.env.KNOWLEDGE_ADMIN_TOKEN || process.env.ADMIN_API_TOKEN || '';
+}
+
+async function requestContentRevalidation(event: ContentRevalidationEvent): Promise<boolean> {
+    const adminToken = getAdminToken();
+    if (!adminToken) {
+        logger.warn('Scheduler', '未配置管理 token，跳过统一重验证请求');
+        return false;
+    }
+
+    const response = await fetch(buildAbsoluteUrl('/api/revalidate/content'), {
+        method: 'POST',
+        headers: {
+            'content-type': 'application/json',
+            'x-admin-token': adminToken,
+        },
+        body: JSON.stringify(event),
+    });
+
+    if (!response.ok) {
+        logger.warn('Scheduler', `统一重验证失败: HTTP ${response.status}`);
+        return false;
+    }
+
+    return true;
+}
+
+async function revalidateAndWarmRankings(): Promise<void> {
+    logger.info('RankingSyncJob', '🔄 开始重验证榜单静态页面...');
+    await requestContentRevalidation({
+        type: 'rankings',
+        action: 'refresh',
+        kind: 'all',
+    });
+    logger.info('RankingSyncJob', '✅ 执行完毕');
+}
+
 export function startScheduler(): void {
     if (isRunning) {
         logger.info('Scheduler', '调度器已在运行');
@@ -57,6 +95,7 @@ export function startScheduler(): void {
             try {
                 const sourceReport = await promptSourceSync();
                 if (sourceReport.newlyAdded > 0 || sourceReport.updated > 0) {
+                    await requestContentRevalidation({ type: 'prompt', action: 'sync' });
                     logger.persist('PromptSyncJob', `Sources: 解析 ${sourceReport.totalParsed}, 新增 ${sourceReport.newlyAdded}, 更新 ${sourceReport.updated}, 跳过 ${sourceReport.skipped}`);
                 }
             } catch (err) {
@@ -68,9 +107,7 @@ export function startScheduler(): void {
     // ─── 排行榜同步任务 ───
     const rankingTask = cron.schedule(JOB_INTERVALS.rankingSync, async () => {
         await runWithLock('RankingSync', async () => {
-            logger.info('RankingSyncJob', '🔄 开始执行...');
-            await refreshAllRankings();
-            logger.info('RankingSyncJob', '✅ 执行完毕');
+            await revalidateAndWarmRankings();
         });
     }, { scheduled: false } as Record<string, unknown>);
 
@@ -84,15 +121,11 @@ export function startScheduler(): void {
     logger.info('Scheduler', `  📌 排行榜同步:  ${JOB_INTERVALS.rankingSync}`);
     logger.info('Scheduler', '══════════════════════════════════════');
 
-    if (rankingCachePolicies.some((policy) => policy.warmOnStartup)) {
-        // 启动时立即预热排行榜缓存（延迟 5 秒避免阻塞启动）
-        setTimeout(async () => {
-            logger.info('Scheduler', '🚀 启动预热：刷新排行榜缓存...');
-            await runWithLock('RankingSync', async () => {
-                await refreshAllRankings();
-            });
-        }, 5000);
-    }
+    // 启动时预热榜单 ISR 页面（延迟 5 秒避免阻塞启动）。
+    setTimeout(async () => {
+        logger.info('Scheduler', '🚀 启动预热：刷新榜单静态页面...');
+        await runWithLock('RankingSync', revalidateAndWarmRankings);
+    }, 5000);
 }
 
 export function stopScheduler(): void {

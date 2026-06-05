@@ -36,13 +36,13 @@ const githubFixture = [
     },
 ];
 
-describe('ranking cache', () => {
+describe('ranking source service', () => {
     beforeEach(() => {
         vi.resetModules();
         vi.clearAllMocks();
     });
 
-    it('caches ranking reads behind the shared cache manager', async () => {
+    it('loads ranking reads directly so ISR pages are the cache layer', async () => {
         mockScrapeGitHubTrending.mockResolvedValue(githubFixture);
 
         const { getGitHubTrendings } = await import('@/lib/services/ranking-cache');
@@ -50,20 +50,14 @@ describe('ranking cache', () => {
         await expect(getGitHubTrendings()).resolves.toEqual(githubFixture);
         await expect(getGitHubTrendings()).resolves.toEqual(githubFixture);
 
-        expect(mockScrapeGitHubTrending).toHaveBeenCalledTimes(1);
+        expect(mockScrapeGitHubTrending).toHaveBeenCalledTimes(2);
     });
 
-    it('keeps the last successful ranking payload when refresh returns an empty list', async () => {
-        mockScrapeGitHubTrending
-            .mockResolvedValueOnce(githubFixture)
-            .mockResolvedValueOnce([]);
-        mockScrapeProductHunt.mockResolvedValue([]);
-        mockScrapeSkillsSh.mockResolvedValue([]);
+    it('returns an empty list when a ranking source fails', async () => {
+        mockScrapeGitHubTrending.mockRejectedValue(new Error('source unavailable'));
 
-        const { getGitHubTrendings, refreshAllRankings } = await import('@/lib/services/ranking-cache');
+        const { getGitHubTrendings } = await import('@/lib/services/ranking-cache');
 
-        await expect(getGitHubTrendings()).resolves.toEqual(githubFixture);
-        await expect(refreshAllRankings()).resolves.toBeUndefined();
-        await expect(getGitHubTrendings()).resolves.toEqual(githubFixture);
+        await expect(getGitHubTrendings()).resolves.toEqual([]);
     });
 });

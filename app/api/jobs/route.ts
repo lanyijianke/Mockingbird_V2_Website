@@ -1,7 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { buildAbsoluteUrl } from '@/lib/site-config';
 import { verifyAdminHeaders } from '@/lib/utils/admin-auth';
 
 export const runtime = 'nodejs';
+
+function getAdminToken(): string {
+    return process.env.KNOWLEDGE_ADMIN_TOKEN || process.env.ADMIN_API_TOKEN || '';
+}
+
+async function requestContentRevalidation(body: unknown): Promise<void> {
+    const adminToken = getAdminToken();
+    if (!adminToken) return;
+
+    const response = await fetch(buildAbsoluteUrl('/api/revalidate/content'), {
+        method: 'POST',
+        headers: {
+            'content-type': 'application/json',
+            'x-admin-token': adminToken,
+        },
+        body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+        console.warn(`[API] 统一重验证失败: HTTP ${response.status}`);
+    }
+}
 
 /**
  * GET /api/jobs — 获取调度器状态
@@ -40,6 +63,9 @@ export async function POST(request: NextRequest) {
             const { syncAllAsync: promptSourceSync } = await import('@/lib/pipelines/prompt-readme-sync');
             console.log('[API] 手动触发提示词源同步...');
             const sources = await promptSourceSync();
+            if (sources.newlyAdded > 0 || sources.updated > 0) {
+                await requestContentRevalidation({ type: 'prompt', action: 'sync' });
+            }
             const report = { sources };
             console.log('[API] 提示词源同步完成:', report);
             return NextResponse.json({ message: '提示词同步已执行', report });

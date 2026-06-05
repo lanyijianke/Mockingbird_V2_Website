@@ -35,7 +35,15 @@ async function ensureColumn(
 }
 
 async function dropLegacyTables(conn: PoolConnection): Promise<void> {
+    await conn.query('DROP TABLE IF EXISTS InvitationRedemptions');
+    await conn.query('DROP TABLE IF EXISTS InvitationCodes');
+    await conn.query('DROP TABLE IF EXISTS EmailVerificationTokens');
+    await conn.query('DROP TABLE IF EXISTS PasswordResetTokens');
+    await conn.query('DROP TABLE IF EXISTS OauthAccounts');
+    await conn.query('DROP TABLE IF EXISTS AcademyContent');
     await conn.query('DROP TABLE IF EXISTS Articles');
+    await conn.query('DROP TABLE IF EXISTS Sessions');
+    await conn.query('DROP TABLE IF EXISTS Users');
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -110,22 +118,5 @@ export async function initDatabase(conn: PoolConnection): Promise<void> {
     await ensureIndex(conn, 'idx_prompts_active', `CREATE INDEX idx_prompts_active ON Prompts(IsActive)`);
     await ensureIndex(conn, 'idx_prompts_sourceurl', `CREATE INDEX idx_prompts_sourceurl ON Prompts(SourceUrl(255))`);
     await ensureIndex(conn, 'idx_prompts_rawtitle', `CREATE INDEX idx_prompts_rawtitle ON Prompts(RawTitle)`);
-
-    // ════════════════════════════════════════════════════════════════
-    // 用户会话（用户数据由 Auth 管理，本地只存 session）
-    // ════════════════════════════════════════════════════════════════
-
-    await conn.query(`
-        CREATE TABLE IF NOT EXISTS Sessions (
-            Id        INT PRIMARY KEY AUTO_INCREMENT,
-            Token     VARCHAR(200) NOT NULL,
-            UserId    VARCHAR(36) NOT NULL,
-            ExpiresAt DATETIME NOT NULL,
-            CreatedAt DATETIME DEFAULT NOW(),
-            UNIQUE INDEX idx_sessions_token (Token),
-            INDEX idx_sessions_userId (UserId),
-            INDEX idx_sessions_expires (ExpiresAt)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `);
 
 }

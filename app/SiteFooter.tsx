@@ -38,7 +38,7 @@ export default function SiteFooter() {
             <span className="site-footer-title">{brand.brandName}</span>
           </Link>
           <p className="site-footer-description">
-            AI 文章、提示词和工具热榜的长期收藏夹。
+            文章、提示词和工具热榜的长期收藏夹。
           </p>
         </div>
 

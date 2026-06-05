@@ -11,7 +11,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/app/NavAuthButton', () => ({
-    default: () => createElement('span', null, 'auth'),
+    default: () => null,
 }));
 
 describe('root layout navigation', () => {
@@ -27,7 +27,9 @@ describe('root layout navigation', () => {
         expect(navLeftMatch?.[1]).toContain('href="/about"');
         expect(navRightMatch?.[1]).toContain('href="/ai/articles"');
         expect(navRightMatch?.[1]).toContain('href="/ai/prompts"');
-        expect(navRightMatch?.[1]).toContain('AI 提示词');
+        expect(navRightMatch?.[1]).toContain('提示词');
+        expect(navRightMatch?.[1]).not.toContain('AI文章');
+        expect(navRightMatch?.[1]).not.toContain('AI 提示词');
         expect(navRightMatch?.[1]).not.toContain('href="/about"');
         expect(navRightMatch?.[1]).not.toContain('href="/finance/articles"');
         expect(html).not.toContain('学社');

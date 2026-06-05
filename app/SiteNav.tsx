@@ -44,8 +44,8 @@ export default function SiteNav() {
         {/* ── AI subsite navigation ── */}
         {isAi && (
           <>
-            <Link href={getArticleListPath('ai')} className="nav-link">AI文章</Link>
-            <Link href="/ai/prompts" className="nav-link">AI 提示词</Link>
+            <Link href={getArticleListPath('ai')} className="nav-link">文章</Link>
+            <Link href="/ai/prompts" className="nav-link">提示词</Link>
 
             {/* Mobile: plain link */}
             <Link href="/ai/rankings/github" className="nav-link nav-mobile-only">
@@ -86,7 +86,7 @@ export default function SiteNav() {
           </>
         )}
 
-        {/* ── Default navigation (brand home, auth pages, profile, etc.) ── */}
+        {/* ── Default navigation ── */}
         {!isAi && !isFinance && (
           <>
             <Link href={getArticleListPath('ai')} className="nav-link">AI</Link>

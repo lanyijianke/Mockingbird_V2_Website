@@ -6,7 +6,7 @@ const mockDownloadMedia = vi.fn();
 const mockDownloadVideoViaYtDlp = vi.fn();
 const mockCreateCardPreviewVideo = vi.fn();
 const mockExtractFirstFrame = vi.fn();
-const mockUploadPromptMediaFileToR2 = vi.fn(async (value: string) => value);
+const mockUploadPromptMediaFileToR2 = vi.fn(async (value: string): Promise<string | null> => value);
 const mockWithPromptMediaWorkspace = vi.fn(async (task: (workspaceDir: string) => Promise<unknown>) => task('/tmp/prompt-media'));
 
 vi.mock('@/lib/db', () => ({

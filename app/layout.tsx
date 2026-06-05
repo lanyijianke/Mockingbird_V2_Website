@@ -1,5 +1,4 @@
 import { ToastProvider } from '@/app/ToastContext';
-import { AuthModalProvider } from '@/app/AuthModalContext';
 import SiteNav from './SiteNav';
 import SiteFooter from './SiteFooter';
 import { buildPageMetadata } from '@/lib/seo/metadata';
@@ -21,7 +20,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <ToastProvider>
-        <AuthModalProvider>
         {/* ═══ Top Navigation ═══ */}
         <SiteNav />
 
@@ -32,8 +30,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
         </main>
         <SiteFooter />
-
-        </AuthModalProvider>
         </ToastProvider>
       </body>
     </html>

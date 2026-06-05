@@ -1,4 +1,4 @@
-import { execute, query, queryScalar } from '@/lib/db';
+import { execute } from '@/lib/db';
 
 // ════════════════════════════════════════════════════════════════
 // 持久化日志服务 — 写入 MySQL SystemLogs 表
@@ -44,4 +44,3 @@ export function serializeError(err: unknown): string {
         return String(err);
     }
 }
-

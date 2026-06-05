@@ -2,8 +2,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { getArticleDetailPath, getArticleListPath } from '@/lib/articles/article-route-paths';
 
-export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+export const revalidate = 300;
 
 const LIST_PATH = getArticleListPath('finance');
 

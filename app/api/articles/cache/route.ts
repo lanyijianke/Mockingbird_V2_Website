@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { clearArticleDirectoryCache } from '@/lib/articles/article-directory';
+import { revalidateContentChange, warmContentPaths } from '@/lib/cache/content-revalidation';
 import { verifyAdminHeaders } from '@/lib/utils/admin-auth';
 
 export const runtime = 'nodejs';
@@ -10,6 +10,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
 
-    clearArticleDirectoryCache();
-    return NextResponse.json({ success: true, message: 'Article cache cleared' });
+    const result = revalidateContentChange({ type: 'articles', action: 'manual' });
+    const warmup = await warmContentPaths(result.warmPaths);
+    return NextResponse.json({
+        success: true,
+        message: 'Article content revalidated',
+        data: { ...result, warmup },
+    });
 }

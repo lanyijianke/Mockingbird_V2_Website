@@ -19,6 +19,10 @@ describe('next image remote patterns', () => {
         });
     });
 
+    it('serves static image URLs directly instead of proxying them through Next image optimizer', () => {
+        expect(nextConfig.images?.unoptimized).toBe(true);
+    });
+
     it('allows ProductHunt imgix thumbnails across all paths', () => {
         const remotePatterns = nextConfig.images?.remotePatterns ?? [];
         const productHuntPattern = remotePatterns.find((pattern) => pattern.hostname === 'ph-files.imgix.net');
@@ -34,6 +38,21 @@ describe('next image remote patterns', () => {
     it('allows the configured R2 article asset domain for image assets', async () => {
         vi.resetModules();
         process.env.KNOWLEDGE_R2_PUBLIC_ASSET_HOST = 'assets.zgnknowledge.online';
+
+        const { default: config } = await import('@/next.config');
+        const remotePatterns = config.images?.remotePatterns ?? [];
+        const r2Pattern = remotePatterns.find((pattern) => pattern.hostname === 'assets.zgnknowledge.online');
+
+        expect(r2Pattern).toMatchObject({
+            protocol: 'https',
+            hostname: 'assets.zgnknowledge.online',
+            pathname: '/**',
+        });
+    });
+
+    it('allows the production R2 article asset domain without env configuration', async () => {
+        vi.resetModules();
+        delete process.env.KNOWLEDGE_R2_PUBLIC_ASSET_HOST;
 
         const { default: config } = await import('@/next.config');
         const remotePatterns = config.images?.remotePatterns ?? [];

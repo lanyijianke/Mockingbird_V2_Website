@@ -13,10 +13,14 @@ vi.mock('next/image', async () => {
 
     return {
         default: ({
-            fill: _fill,
-            priority: _priority,
+            fill,
+            priority,
             ...props
-        }: Record<string, unknown>) => ReactModule.createElement('img', props),
+        }: Record<string, unknown>) => {
+            void fill;
+            void priority;
+            return ReactModule.createElement('img', props);
+        },
     };
 });
 

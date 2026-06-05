@@ -128,12 +128,12 @@ describe('homepage prompt gallery', () => {
         expect(html).not.toContain('/ai/prompts/categories/');
     });
 
-    it('forces runtime rendering so mounted article sources are available in Docker', async () => {
+    it('uses ISR so the homepage static output is the public cache layer', async () => {
         const homeRoute = await import('@/app/page');
         const aiRoute = await import('@/app/ai/page');
 
-        expect(homeRoute.dynamic).toBe('force-dynamic');
-        expect(aiRoute.dynamic).toBe('force-dynamic');
+        expect(homeRoute.revalidate).toBe(300);
+        expect(aiRoute.revalidate).toBe(300);
     });
 
     it('prioritizes GPT Image 2 before older model sections on the homepage', async () => {

@@ -18,10 +18,17 @@ describe('console-knowledge-handoff skill', () => {
   it('keeps review gate rules explicit in the skill body', () => {
     const skill = readFileSync(path.join(skillDir, 'SKILL.md'), 'utf8');
 
-    expect(skill).toContain('Never publish before explicit user confirmation');
-    expect(skill).toContain('Never update `ai/manifest.json` during review staging');
-    expect(skill).toContain('Stage the article to `ai/articles/review/<slug>/index.md`');
-    expect(skill).toContain('If `article.language` is `en`, load `references/terminology.json`');
+    expect(skill).toContain('未经用户明确确认，绝不发布');
+    expect(skill).toContain('审阅暂存阶段绝不更新 `ai/manifest.json`');
+    expect(skill).toContain('将文章暂存至 `ai/articles/review/<slug>/index.md`');
+    expect(skill).toContain('若需翻译英文内容，必须使用 `references/terminology.json`');
+  });
+
+  it('requires published articles to use the unified revalidation endpoint', () => {
+    const skill = readFileSync(path.join(skillDir, 'SKILL.md'), 'utf8');
+
+    expect(skill).toContain('POST /api/revalidate/content');
+    expect(skill).toContain('{"type":"article","action":"publish","site":"ai","slug":"<slug>"}');
   });
 
   it('provides a Chinese handoff fixture that should be copied without translation', () => {

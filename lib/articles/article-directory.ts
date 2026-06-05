@@ -1,8 +1,5 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { cacheKeys, cacheTags } from '@/lib/cache/keys';
-import { cachePolicies } from '@/lib/cache/policies';
-import { getCacheManager } from '@/lib/cache/runtime';
 import { loadArticleSourceConfigs } from './source-config';
 import { readR2ObjectText } from './r2-client';
 import type {
@@ -222,65 +219,49 @@ function sortEntriesNewestFirst(entries: ArticleDirectoryEntry[]): ArticleDirect
 export async function fetchAggregatedArticleDirectory(options?: {
     forceRefresh?: boolean;
 }): Promise<ArticleDirectorySnapshot> {
-    return getCacheManager().getOrLoad(
-        cachePolicies.articlesDirectory,
-        cacheKeys.articles.directory(),
-        async () => {
-            const configs = loadArticleSourceConfigs();
-            if (configs.length === 0) {
-                return { entries: [], categoriesBySite: {} };
-            }
+    void options;
 
-            const manifests = await Promise.all(
-                configs.map(async (config) => ({ config, manifest: await fetchSourceManifest(config) }))
-            );
+    const configs = loadArticleSourceConfigs();
+    if (configs.length === 0) {
+        return { entries: [], categoriesBySite: {} };
+    }
 
-            const categoriesBySite: Record<string, ArticleSourceCategory[]> = {};
-            const entries: ArticleDirectoryEntry[] = [];
-
-            for (const { config, manifest } of manifests) {
-                const categories = deriveCategories(manifest);
-                categoriesBySite[manifest.site] = categories;
-
-                for (const article of manifest.articles.filter(isValidPublishedArticle)) {
-                    entries.push(mapManifestArticle(config, manifest, article, categories));
-                }
-            }
-
-            return {
-                entries: sortEntriesNewestFirst(entries),
-                categoriesBySite,
-            };
-        },
-        {
-            forceRefresh: options?.forceRefresh,
-            tags: [cacheTags.articles],
-        }
+    const manifests = await Promise.all(
+        configs.map(async (config) => ({ config, manifest: await fetchSourceManifest(config) }))
     );
+
+    const categoriesBySite: Record<string, ArticleSourceCategory[]> = {};
+    const entries: ArticleDirectoryEntry[] = [];
+
+    for (const { config, manifest } of manifests) {
+        const categories = deriveCategories(manifest);
+        categoriesBySite[manifest.site] = categories;
+
+        for (const article of manifest.articles.filter(isValidPublishedArticle)) {
+            entries.push(mapManifestArticle(config, manifest, article, categories));
+        }
+    }
+
+    return {
+        entries: sortEntriesNewestFirst(entries),
+        categoriesBySite,
+    };
 }
 
 export async function fetchArticleMarkdown(
     entry: Pick<ArticleDirectoryEntry, 'sourceType' | 'contentLocator' | 'contentFilePath' | 'contentBucket' | 'contentKey'>,
     options?: { forceRefresh?: boolean }
 ): Promise<string> {
-    return getCacheManager().getOrLoad(
-        cachePolicies.articlesMarkdown,
-        cacheKeys.articles.markdown(entry.contentLocator),
-        async () => {
-            if (entry.sourceType === 'r2') {
-                if (!entry.contentBucket) throw new Error('R2 article entry is missing contentBucket');
-                if (!entry.contentKey) throw new Error('R2 article entry is missing contentKey');
-                return readR2ObjectText(entry.contentBucket, entry.contentKey);
-            }
+    void options;
 
-            if (!entry.contentFilePath) throw new Error('Local article entry is missing contentFilePath');
-            return fs.readFile(entry.contentFilePath, 'utf-8');
-        },
-        {
-            forceRefresh: options?.forceRefresh,
-            tags: [cacheTags.articles, cacheTags.articleContent(entry.contentLocator)],
-        }
-    );
+    if (entry.sourceType === 'r2') {
+        if (!entry.contentBucket) throw new Error('R2 article entry is missing contentBucket');
+        if (!entry.contentKey) throw new Error('R2 article entry is missing contentKey');
+        return readR2ObjectText(entry.contentBucket, entry.contentKey);
+    }
+
+    if (!entry.contentFilePath) throw new Error('Local article entry is missing contentFilePath');
+    return fs.readFile(entry.contentFilePath, 'utf-8');
 }
 
 export async function getArticleDirectoryEntry(
@@ -308,5 +289,5 @@ export function resolveEntryAssetFilePath(entry: ArticleDirectoryEntry, relative
 }
 
 export function clearArticleDirectoryCache(): void {
-    getCacheManager().invalidateTag(cacheTags.articles);
+    // Legacy no-op: public article pages use ISR/static output as the cache layer.
 }

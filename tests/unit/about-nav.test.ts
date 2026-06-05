@@ -15,7 +15,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/app/NavAuthButton', () => ({
-    default: () => createElement('span', null, 'auth'),
+    default: () => null,
 }));
 
 describe('about navigation link', () => {

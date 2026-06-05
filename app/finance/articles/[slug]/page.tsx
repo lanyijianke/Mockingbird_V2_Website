@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getArticleDetailPath, getArticleListPath } from '@/lib/articles/article-route-paths';
+import { extractToc, rehypeUniqueHeadingIds } from '@/lib/articles/markdown-headings';
 import ArticleReaderClient from '@/app/articles/[slug]/ArticleReaderClient';
 import '@/app/articles/[slug]/article-reader.css';
 
@@ -28,37 +29,6 @@ export async function generateStaticParams() {
     const { getAllSlugs } = await import('@/lib/services/article-service');
     const slugs = await getAllSlugs('finance');
     return slugs.map((slug) => ({ slug }));
-}
-
-interface TocItem {
-    id: string;
-    text: string;
-    level: number;
-}
-
-function extractToc(markdown: string): TocItem[] {
-    const headingRegex = /^(#{1,5})\s+(.+)$/gm;
-    const toc: TocItem[] = [];
-    let match: RegExpExecArray | null;
-    while ((match = headingRegex.exec(markdown)) !== null) {
-        const level = match[1].length;
-        const text = match[2]
-            .replace(/\*\*(.+?)\*\*/g, '$1')
-            .replace(/\*(.+?)\*/g, '$1')
-            .replace(/`(.+?)`/g, '$1')
-            .replace(/\[(.+?)\]\(.+?\)/g, '$1')
-            .trim();
-        const id = text
-            .toLowerCase()
-            .replace(/[^\p{L}\p{N}\s-]/gu, '')
-            .replace(/\s+/g, '-')
-            .replace(/-+/g, '-')
-            .replace(/^-|-$/g, '');
-        if (text && id) {
-            toc.push({ id, text, level });
-        }
-    }
-    return toc;
 }
 
 function estimateReadingMinutes(content: string): number {
@@ -97,7 +67,6 @@ export default async function FinanceArticleDetailPage({
     const remarkParse = (await import('remark-parse')).default;
     const remarkGfm = (await import('remark-gfm')).default;
     const remarkRehype = (await import('remark-rehype')).default;
-    const rehypeSlug = (await import('rehype-slug')).default;
     const rehypeHighlight = (await import('rehype-highlight')).default;
     const rehypeStringify = (await import('rehype-stringify')).default;
 
@@ -105,7 +74,7 @@ export default async function FinanceArticleDetailPage({
         .use(remarkParse)
         .use(remarkGfm)
         .use(remarkRehype)
-        .use(rehypeSlug)
+        .use(rehypeUniqueHeadingIds)
         .use(rehypeHighlight, { detect: true, ignoreMissing: true })
         .use(rehypeStringify)
         .process(content);

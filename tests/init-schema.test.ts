@@ -1,5 +1,5 @@
 import mysql, { type RowDataPacket, type PoolConnection } from 'mysql2/promise';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { initDatabase } from '@/lib/init-schema';
 
 const TEST_MYSQL_URL = process.env.MYSQL_URL;
@@ -50,34 +50,41 @@ describe.skipIf(!TEST_MYSQL_URL)('initDatabase', () => {
         }
     });
 
-    it('migrates legacy member roles to junior_member during initialization', async () => {
-        const dbName = `mockingbird_test_${Date.now()}_roles`;
+    it('drops and does not recreate legacy local auth, invitation, or academy tables', async () => {
+        const dbName = `mockingbird_test_${Date.now()}_legacy_auth`;
 
         await adminConn.query(`CREATE DATABASE ${dbName}`);
         const conn = await mysql.createConnection({ ...parseMySqlUrl(TEST_MYSQL_URL!), database: dbName });
 
         try {
+            for (const tableName of [
+                'Users',
+                'OauthAccounts',
+                'Sessions',
+                'EmailVerificationTokens',
+                'PasswordResetTokens',
+                'InvitationCodes',
+                'InvitationRedemptions',
+                'AcademyContent',
+            ]) {
+                await conn.query(`
+                    CREATE TABLE ${tableName} (
+                        Id INT PRIMARY KEY AUTO_INCREMENT
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                `);
+            }
+
             await initDatabase(conn as unknown as PoolConnection);
 
-            await conn.query(
-                `INSERT INTO Users (Id, Name, Email, Role) VALUES ('user-1', 'Legacy Member', 'legacy-member@example.com', 'member')`,
-            );
-            await conn.query(
-                `INSERT INTO InvitationCodes (Code, TargetRole, ExpiresAt) VALUES ('LEGACY-001', 'member', '2099-01-01 00:00:00')`,
-            );
-
-            // Re-run init to trigger migration
-            await initDatabase(conn as unknown as PoolConnection);
-
-            const [userRows] = await conn.query<RowDataPacket[]>(
-                `SELECT Role FROM Users WHERE Id = 'user-1'`,
-            );
-            expect(userRows[0].Role).toBe('junior_member');
-
-            const [inviteRows] = await conn.query<RowDataPacket[]>(
-                `SELECT TargetRole FROM InvitationCodes WHERE Code = 'LEGACY-001'`,
-            );
-            expect(inviteRows[0].TargetRole).toBe('junior_member');
+            const tableNames = await getTableNames(conn);
+            expect(tableNames).not.toContain('Users');
+            expect(tableNames).not.toContain('OauthAccounts');
+            expect(tableNames).not.toContain('Sessions');
+            expect(tableNames).not.toContain('EmailVerificationTokens');
+            expect(tableNames).not.toContain('PasswordResetTokens');
+            expect(tableNames).not.toContain('InvitationCodes');
+            expect(tableNames).not.toContain('InvitationRedemptions');
+            expect(tableNames).not.toContain('AcademyContent');
         } finally {
             await conn.end();
             await adminConn.query(`DROP DATABASE ${dbName}`);

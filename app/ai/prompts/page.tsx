@@ -4,14 +4,14 @@ import { buildPromptsMetadata } from '@/lib/seo/metadata';
 import PromptInfiniteGallery from './PromptInfiniteGallery';
 import { buildPromptGalleryResetKey } from './infinite-gallery-utils';
 
-export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+export const revalidate = 300;
 
 const PROMPT_CATEGORY_CODES = new Set(getSubcategories('multimodal-prompts').map((item) => item.code));
 const INTERNAL_LINKS = [
     {
         href: '/ai/articles',
-        title: '阅读 AI 深度文章',
+        title: '阅读深度文章',
         description: '先看文章理解背景，再回到提示词库挑选更适合当前任务的模板。',
     },
     {

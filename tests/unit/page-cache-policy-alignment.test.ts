@@ -2,16 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { cachePageRevalidate } from '@/lib/cache/policies';
 
 describe('page cache policy alignment', () => {
-    it('keeps runtime data aggregation pages dynamic so mounted content can update', async () => {
+    it('keeps public aggregation pages on ISR so static output is the cache layer', async () => {
         const homePage = await import('@/app/page');
         const aiHomePage = await import('@/app/ai/page');
         const aiArticlesPage = await import('@/app/ai/articles/page');
         const aiPromptsPage = await import('@/app/ai/prompts/page');
+        const financeHomePage = await import('@/app/finance/page');
+        const financeArticlesPage = await import('@/app/finance/articles/page');
 
-        expect(homePage.dynamic).toBe('force-dynamic');
-        expect(aiHomePage.dynamic).toBe('force-dynamic');
-        expect(aiArticlesPage.dynamic).toBe('force-dynamic');
-        expect(aiPromptsPage.dynamic).toBe('force-dynamic');
+        expect(homePage.revalidate).toBe(cachePageRevalidate.home);
+        expect(aiHomePage.revalidate).toBe(cachePageRevalidate.home);
+        expect(aiArticlesPage.revalidate).toBe(cachePageRevalidate.home);
+        expect(aiPromptsPage.revalidate).toBe(cachePageRevalidate.home);
+        expect(financeHomePage.revalidate).toBe(cachePageRevalidate.home);
+        expect(financeArticlesPage.revalidate).toBe(cachePageRevalidate.home);
     });
 
     it('keeps detail and ranking route segment revalidate exports aligned with centralized cache settings', async () => {

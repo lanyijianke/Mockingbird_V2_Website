@@ -12,6 +12,7 @@ import {
     buildArticleSchema,
 } from '@/lib/seo/schema';
 import { buildAbsoluteUrl } from '@/lib/site-config';
+import { extractToc, rehypeUniqueHeadingIds } from '@/lib/articles/markdown-headings';
 import ArticleReaderClient from '@/app/articles/[slug]/ArticleReaderClient';
 import '@/app/articles/[slug]/article-reader.css';
 
@@ -38,37 +39,6 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
         description: article.seoDescription || article.summary,
         path: getArticleDetailPath('ai', article.slug),
     });
-}
-
-interface TocItem {
-    id: string;
-    text: string;
-    level: number;
-}
-
-function extractToc(markdown: string): TocItem[] {
-    const headingRegex = /^(#{1,5})\s+(.+)$/gm;
-    const toc: TocItem[] = [];
-    let match: RegExpExecArray | null;
-    while ((match = headingRegex.exec(markdown)) !== null) {
-        const level = match[1].length;
-        const text = match[2]
-            .replace(/\*\*(.+?)\*\*/g, '$1')
-            .replace(/\*(.+?)\*/g, '$1')
-            .replace(/`(.+?)`/g, '$1')
-            .replace(/\[(.+?)\]\(.+?\)/g, '$1')
-            .trim();
-        const id = text
-            .toLowerCase()
-            .replace(/[^\p{L}\p{N}\s-]/gu, '')
-            .replace(/\s+/g, '-')
-            .replace(/-+/g, '-')
-            .replace(/^-|-$/g, '');
-        if (text && id) {
-            toc.push({ id, text, level });
-        }
-    }
-    return toc;
 }
 
 function estimateReadingMinutes(content: string): number {
@@ -107,7 +77,6 @@ export default async function AiArticleDetailPage({
     const remarkParse = (await import('remark-parse')).default;
     const remarkGfm = (await import('remark-gfm')).default;
     const remarkRehype = (await import('remark-rehype')).default;
-    const rehypeSlug = (await import('rehype-slug')).default;
     const rehypeHighlight = (await import('rehype-highlight')).default;
     const rehypeStringify = (await import('rehype-stringify')).default;
 
@@ -115,7 +84,7 @@ export default async function AiArticleDetailPage({
         .use(remarkParse)
         .use(remarkGfm)
         .use(remarkRehype)
-        .use(rehypeSlug)
+        .use(rehypeUniqueHeadingIds)
         .use(rehypeHighlight, { detect: true, ignoreMissing: true })
         .use(rehypeStringify)
         .process(content);

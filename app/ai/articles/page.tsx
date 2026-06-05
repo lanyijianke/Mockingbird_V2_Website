@@ -6,8 +6,8 @@ import {
 } from '@/lib/articles/article-route-paths';
 import { buildArticlesMetadata } from '@/lib/seo/metadata';
 
-export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+export const revalidate = 300;
 
 const INTERNAL_LINKS = [
     {
@@ -84,7 +84,7 @@ export default async function AiArticlesPage({
                     <i className="bi bi-house-door" /> 首页
                 </Link>
                 <span className="crumb-separator">/</span>
-                <span className="crumb-current">AI 文章</span>
+                <span className="crumb-current">文章</span>
             </nav>
 
             <div className="search-container">
@@ -197,7 +197,7 @@ export default async function AiArticlesPage({
 
             <section className="home-section" style={{ marginTop: '3rem' }}>
                 <div className="section-bar">
-                    <h2 className="section-title">AI 文章延伸导航</h2>
+                    <h2 className="section-title">文章延伸导航</h2>
                 </div>
                 <p className="zone-subtitle" style={{ marginBottom: '1.25rem' }}>
                     文章页适合做系统阅读。读完后可以继续切到提示词库和热榜页面，把方法论和实际工具趋势连接起来。

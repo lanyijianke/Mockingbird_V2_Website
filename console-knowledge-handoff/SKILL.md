@@ -1,75 +1,75 @@
 ---
 name: console-knowledge-handoff
-description: Use when the user provides a Console-generated R2 handoff locator or handoff JSON URL, asks to put a Console longform article into the Knowledge Website, or mentions 中台长文入知识库, R2 handoff, knowledge-imports/console, review draft, or publishing after manual confirmation.
+description: 当用户提供 Console 生成的 R2 交接定位符或交接 JSON URL，要求将 Console 长文导入知识库网站，或提及中台长文入知识库、R2 交接、knowledge-imports/console、审阅草稿、人工确认后发布时使用此技能。
 ---
 
-# Console Knowledge Handoff
+# Console 知识交接
 
-Import a Console longform article handoff package into the Knowledge Website R2 article state machine. This skill is only for Console-generated handoff JSON, not generic webpage fetching or WeChat publishing.
+将 Console 长文交接包导入知识库网站的 R2 文章状态机。此技能仅适用于 Console 生成的交接 JSON，不适用于通用网页抓取或微信发布。
 
-## Accepted Input
+## 接受的输入
 
-Use this skill when the user provides:
+当用户提供以下内容时使用此技能：
 - `r2://<bucket>/knowledge-imports/console/...json`
 - `https://.../knowledge-imports/console/...json`
-- A local JSON file containing the same handoff schema
+- 包含相同交接模式的本地 JSON 文件
 
-The handoff JSON must include:
+交接 JSON 必须包含：
 - `schemaVersion: 1`
 - `source.sourceType`
 - `source.sourceContentId`
 - `article.content`
 - `article.language`
 
-## Workflow
+## 工作流程
 
-1. Read the handoff JSON. For `r2://bucket/key`, use local S3/R2-compatible credentials. For HTTPS, fetch the URL directly.
-2. Validate the required fields. Stop if `schemaVersion` is not `1` or article content is empty.
-3. If `article.language` is `zh`, keep the article in Chinese and normalize Markdown only.
-4. If `article.language` is `en`, load `references/terminology.json` and translate title, summary, and body into Chinese.
-5. Generate article metadata: `slug`, Chinese `title`, Chinese `summary`, `category`, `author`, `originalUrl`, `sourcePlatform`, `type`, and `tags`.
-6. Prefer metadata from `analysis.categoryHints`, `analysis.qualityScore`, `source.sourceUrl`, `source.sourcePlatform`, `article.authorHandle`, and `article.authorName`.
-7. Process images from `mediaAssets`: only use assets with `assetType === "image"`, `processingStatus === "completed"`, and `publicUrl`.
-8. Download images to the article folder as `images/cover.jpg`, `images/01.jpg`, `images/02.jpg`, and rewrite Markdown links to relative paths.
-9. Stage the article to `ai/articles/review/<slug>/index.md` and upload images under `ai/articles/review/<slug>/images/`.
-10. Write `ai/state/articles/<slug>.json` with `status: "review"`.
-11. Write `ai/events/<timestamp>-review-<slug>.json`.
-12. Report the review draft to the user with title, slug, category, summary, original URL, and R2 review key.
-13. Stop and ask for explicit user confirmation before publishing.
-14. After confirmation, promote to `ai/articles/published/<slug>/`, update state to `status: "published"`, update `ai/manifest.json`, write `ai/manifests/<revision>.json`, write `ai/events/<timestamp>-publish-<slug>.json`, refresh article cache, and verify `/api/articles?action=slugs&site=ai`.
+1. 读取交接 JSON。对于 `r2://bucket/key`，使用本地 S3/R2 兼容凭证。对于 HTTPS，直接获取 URL。
+2. 校验必填字段。若 `schemaVersion` 不为 `1` 或文章内容为空，则停止。
+3. 若 `article.language` 为 `zh`，保留中文原文，仅做 Markdown 格式规范化。
+4. 若 `article.language` 为 `en`，加载 `references/terminology.json`，将标题、摘要和正文翻译为中文。
+5. 生成文章元数据：`slug`、中文 `title`、中文 `summary`、`category`、`author`、`originalUrl`、`sourcePlatform`、`type` 和 `tags`。
+6. 优先使用 `analysis.categoryHints`、`analysis.qualityScore`、`source.sourceUrl`、`source.sourcePlatform`、`article.authorHandle` 和 `article.authorName` 中的元数据。
+7. 处理 `mediaAssets` 中的图片：仅使用 `assetType === "image"`、`processingStatus === "completed"` 且有 `publicUrl` 的资源。
+8. 将图片下载到文章目录，命名为 `images/cover.jpg`、`images/01.jpg`、`images/02.jpg`，并将 Markdown 中的链接重写为相对路径。
+9. 将文章暂存至 `ai/articles/review/<slug>/index.md`，并上传图片至 `ai/articles/review/<slug>/images/`。
+10. 写入 `ai/state/articles/<slug>.json`，状态为 `status: "review"`。
+11. 写入 `ai/events/<timestamp>-review-<slug>.json`。
+12. 向用户报告审阅草稿，包含标题、slug、分类、摘要、原文 URL 和 R2 审阅路径。
+13. 停止并等待用户明确确认后方可发布。
+14. 确认后，将文章从 review 提升为 published：移至 `ai/articles/published/<slug>/`，更新状态为 `status: "published"`，更新 `ai/manifest.json`，写入 `ai/manifests/<revision>.json`，写入 `ai/events/<timestamp>-publish-<slug>.json`，调用知识库网站 `POST /api/revalidate/content`，携带管理 token 和 payload `{"type":"article","action":"publish","site":"ai","slug":"<slug>"}`，让统一重验证入口刷新并预热公开静态页面，然后验证 `/api/articles?action=slugs&site=ai`。
 
-## Hard Rules
+## 硬性规则
 
-- Never publish before explicit user confirmation.
-- Never update `ai/manifest.json` during review staging.
-- Never use the legacy GitHub `articles/drafts` flow for Console handoffs.
-- Never re-fetch Console internals; the handoff JSON is the source of truth.
-- If English translation is needed, use `references/terminology.json`.
+- 未经用户明确确认，绝不发布。
+- 审阅暂存阶段绝不更新 `ai/manifest.json`。
+- 绝不使用旧版 GitHub `articles/drafts` 流程处理 Console 交接。
+- 绝不重新抓取 Console 内部数据，交接 JSON 即为唯一数据源。
+- 若需翻译英文内容，必须使用 `references/terminology.json`。
 
-## Verification Checklist
+## 验证清单
 
-For a full test, run one Chinese handoff and one English handoff.
+完整测试需运行一次中文交接和一次英文交接。
 
-Chinese handoff:
-- Confirm `article.language` is `zh`.
-- Confirm the staged review Markdown keeps the Chinese body instead of translating or rewriting it wholesale.
-- Confirm images are local relative paths under `images/`.
-- Confirm `ai/state/articles/<slug>.json` has `status: "review"`.
-- Confirm `ai/manifest.json` is unchanged before user confirmation.
+中文交接：
+- 确认 `article.language` 为 `zh`。
+- 确认暂存的审阅 Markdown 保留了中文正文，未进行翻译或大幅改写。
+- 确认图片为 `images/` 下的本地相对路径。
+- 确认 `ai/state/articles/<slug>.json` 状态为 `status: "review"`。
+- 确认用户确认前 `ai/manifest.json` 未被修改。
 
-English handoff:
-- Confirm `article.language` is `en`.
-- Confirm `references/terminology.json` is loaded before translation.
-- Confirm the staged review Markdown is Chinese, not the original English body.
-- Confirm retained English terms follow the terminology rules.
-- Confirm the same review state and manifest restrictions as the Chinese handoff.
+英文交接：
+- 确认 `article.language` 为 `en`。
+- 确认翻译前已加载 `references/terminology.json`。
+- 确认暂存的审阅 Markdown 为中文，而非原始英文正文。
+- 确认保留的英文术语遵循术语表规则。
+- 确认与中文交接相同的审阅状态和 manifest 限制。
 
-Publish confirmation:
-- Only after explicit user confirmation, promote from `review` to `published`.
-- Confirm `ai/manifest.json` includes the slug only after publish.
-- Confirm `/api/articles?action=slugs&site=ai` returns the slug.
+发布确认：
+- 仅在用户明确确认后，才从 `review` 提升为 `published`。
+- 确认发布后 `ai/manifest.json` 包含该 slug。
+- 确认 `/api/articles?action=slugs&site=ai` 返回该 slug。
 
-## R2 Article Layout
+## R2 文章目录结构
 
 ```text
 ai/

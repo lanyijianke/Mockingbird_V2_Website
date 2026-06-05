@@ -67,7 +67,7 @@ export function buildHomeMetadata(): Metadata {
 
 export function buildArticlesMetadata(options: ListMetadataOptions = {}): Metadata {
     return buildPageMetadata({
-        title: 'AI 教程与深度文章',
+        title: '文章：教程与深度解析',
         description: '阅读 AI 教程、技术解析和产品实践文章，系统理解模型能力、Agent 工作流、提示词方法和 AI 工具趋势。',
         path: '/ai/articles',
         noIndex: options.hasFilters,
@@ -76,7 +76,7 @@ export function buildArticlesMetadata(options: ListMetadataOptions = {}): Metada
 
 export function buildPromptsMetadata(options: ListMetadataOptions = {}): Metadata {
     return buildPageMetadata({
-        title: 'AI 提示词库：精选提示词模板',
+        title: '提示词库：精选模板',
         description: '浏览可复用的 AI 提示词模板，覆盖图像、视频、写作、编程和 Agent 工作流等场景。',
         path: '/ai/prompts',
         noIndex: options.hasFilters,
@@ -110,7 +110,7 @@ export function buildPromptDetailMetadata(input: {
     path: string;
 }): Metadata {
     return buildPageMetadata({
-        title: `${input.title} - AI 提示词模板`,
+        title: `${input.title} - 提示词模板`,
         description: input.description,
         path: input.path,
     });

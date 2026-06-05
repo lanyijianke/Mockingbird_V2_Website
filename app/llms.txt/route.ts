@@ -6,8 +6,8 @@ export async function GET() {
   const brand = getSiteBrandConfig();
   const sections = [
     ['AI 知识库首页', '/'],
-    ['AI 教程与文章', '/ai/articles'],
-    ['AI 提示词库', '/ai/prompts'],
+    ['文章', '/ai/articles'],
+    ['提示词库', '/ai/prompts'],
     ['GitHub AI 开源热榜', '/ai/rankings/github'],
     ['ProductHunt AI 产品热榜', '/ai/rankings/producthunt'],
     ['AI 技能趋势', '/ai/rankings/skills-trending'],

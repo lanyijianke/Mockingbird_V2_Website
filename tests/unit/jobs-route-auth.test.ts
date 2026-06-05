@@ -4,6 +4,7 @@ const mockStartScheduler = vi.fn();
 const mockStopScheduler = vi.fn();
 const mockGetSchedulerStatus = vi.fn(() => ({ running: false, jobs: [] }));
 const mockPromptSync = vi.fn(async () => ({ totalParsed: 0, newlyAdded: 0, updated: 0, skipped: 0 }));
+const fetchMock = vi.fn();
 
 vi.mock('@/lib/jobs/scheduler', () => ({
     startScheduler: mockStartScheduler,
@@ -16,11 +17,15 @@ vi.mock('@/lib/pipelines/prompt-readme-sync', () => ({
 }));
 
 const ORIGINAL_ADMIN_TOKEN = process.env.KNOWLEDGE_ADMIN_TOKEN;
+const ORIGINAL_SITE_URL = process.env.SITE_URL;
 
 describe('POST /api/jobs auth guard', () => {
     beforeEach(() => {
         vi.resetAllMocks();
         process.env.KNOWLEDGE_ADMIN_TOKEN = 'unit-test-token';
+        process.env.SITE_URL = 'http://localhost:5046';
+        fetchMock.mockResolvedValue(new Response(null, { status: 200 }));
+        vi.stubGlobal('fetch', fetchMock);
         mockGetSchedulerStatus.mockReturnValue({ running: false, jobs: [] });
         mockPromptSync.mockResolvedValue({ totalParsed: 0, newlyAdded: 0, updated: 0, skipped: 0 });
     });
@@ -31,6 +36,12 @@ describe('POST /api/jobs auth guard', () => {
         } else {
             process.env.KNOWLEDGE_ADMIN_TOKEN = ORIGINAL_ADMIN_TOKEN;
         }
+        if (ORIGINAL_SITE_URL === undefined) {
+            delete process.env.SITE_URL;
+        } else {
+            process.env.SITE_URL = ORIGINAL_SITE_URL;
+        }
+        vi.unstubAllGlobals();
     });
 
     it('returns 401 when admin token is missing', async () => {
@@ -92,6 +103,13 @@ describe('POST /api/jobs auth guard', () => {
 
         expect(response.status).toBe(200);
         expect(mockPromptSync).toHaveBeenCalledTimes(1);
+        expect(fetchMock).toHaveBeenCalledWith(
+            'http://localhost:5046/api/revalidate/content',
+            expect.objectContaining({
+                method: 'POST',
+                body: JSON.stringify({ type: 'prompt', action: 'sync' }),
+            }),
+        );
         expect(body).toEqual({
             message: '提示词同步已执行',
             report: {

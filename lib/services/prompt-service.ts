@@ -1,9 +1,6 @@
 import { query, queryOne, queryScalar, execute } from '@/lib/db';
 import { Prompt, PromptRow, PagedResult } from '@/lib/types';
 import { getCategoryName } from '@/lib/categories';
-import { cacheKeys, cacheTags } from '@/lib/cache/keys';
-import { cachePolicies } from '@/lib/cache/policies';
-import { getCacheManager } from '@/lib/cache/runtime';
 
 // ════════════════════════════════════════════════════════════════
 // 提示词服务 — 对应 PromptService.cs + PromptRepository.cs
@@ -42,20 +39,11 @@ interface PromptSitemapRow {
 
 /** 获取 Top N 提示词 */
 export async function getTopPrompts(count: number = 6): Promise<Prompt[]> {
-    return getCacheManager().getOrLoad(
-        cachePolicies.promptsTop,
-        cacheKeys.prompts.top(count),
-        async () => {
-            const rows = await query<PromptRow>(
-                'SELECT * FROM Prompts WHERE IsActive = 1 ORDER BY CreatedAt DESC LIMIT ?',
-                [count]
-            );
-            return rows.map(r => rowToPrompt(r));
-        },
-        {
-            tags: [cacheTags.prompts],
-        }
+    const rows = await query<PromptRow>(
+        'SELECT * FROM Prompts WHERE IsActive = 1 ORDER BY CreatedAt DESC LIMIT ?',
+        [count]
     );
+    return rows.map(r => rowToPrompt(r));
 }
 
 /** 分页查询提示词 */
@@ -109,20 +97,11 @@ export async function getPagedPrompts(
 
 /** 根据 ID 获取提示词详情 */
 export async function getPromptById(id: number): Promise<Prompt | null> {
-    return getCacheManager().getOrLoad(
-        cachePolicies.promptsDetail,
-        cacheKeys.prompts.detail(id),
-        async () => {
-            const row = await queryOne<PromptRow>(
-                'SELECT * FROM Prompts WHERE Id = ?',
-                [id]
-            );
-            return row ? rowToPrompt(row) : null;
-        },
-        {
-            tags: [cacheTags.prompts, cacheTags.promptDetail(id)],
-        }
+    const row = await queryOne<PromptRow>(
+        'SELECT * FROM Prompts WHERE Id = ?',
+        [id]
     );
+    return row ? rowToPrompt(row) : null;
 }
 
 /** 获取同分类推荐提示词（排除指定 ID） */
@@ -131,20 +110,11 @@ export async function getRelatedPrompts(
     excludeId: number,
     limit: number = 6
 ): Promise<Prompt[]> {
-    return getCacheManager().getOrLoad(
-        cachePolicies.promptsRelated,
-        cacheKeys.prompts.related(category, excludeId, limit),
-        async () => {
-            const rows = await query<PromptRow>(
-                'SELECT * FROM Prompts WHERE IsActive = 1 AND Category = ? AND Id != ? ORDER BY CreatedAt DESC LIMIT ?',
-                [category, excludeId, limit]
-            );
-            return rows.map(r => rowToPrompt(r));
-        },
-        {
-            tags: [cacheTags.prompts],
-        }
+    const rows = await query<PromptRow>(
+        'SELECT * FROM Prompts WHERE IsActive = 1 AND Category = ? AND Id != ? ORDER BY CreatedAt DESC LIMIT ?',
+        [category, excludeId, limit]
     );
+    return rows.map(r => rowToPrompt(r));
 }
 
 /** 复制次数追踪 */
@@ -153,14 +123,7 @@ export async function trackCopy(id: number): Promise<boolean> {
         'UPDATE Prompts SET CopyCount = CopyCount + 1 WHERE Id = ?',
         [id]
     );
-    if (result.affectedRows > 0) {
-        const cacheManager = getCacheManager();
-        cacheManager.invalidate(cachePolicies.promptsDetail, cacheKeys.prompts.detail(id));
-        cacheManager.invalidateTag(cacheTags.prompts);
-        cacheManager.invalidateTag(cacheTags.promptDetail(id));
-        return true;
-    }
-    return false;
+    return result.affectedRows > 0;
 }
 
 /** 获取所有提示词 ID (用于 SSG) */

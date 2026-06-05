@@ -5,6 +5,9 @@ const contentSecurityPolicy = buildContentSecurityPolicy(process.env.NODE_ENV !=
 const consoleApiBaseUrl = process.env.CONSOLE_API_BASE_URL?.trim();
 const consoleApi = consoleApiBaseUrl ? new URL(consoleApiBaseUrl) : null;
 const articleR2PublicHost = process.env.KNOWLEDGE_R2_PUBLIC_ASSET_HOST?.trim();
+const articleR2PublicHosts = Array.from(
+  new Set(['assets.zgnknowledge.online', articleR2PublicHost].filter((host): host is string => Boolean(host))),
+);
 const consoleImagePattern = consoleApi
   ? {
       protocol: consoleApi.protocol.replace(':', '') as 'http' | 'https',
@@ -12,24 +15,23 @@ const consoleImagePattern = consoleApi
       port: consoleApi.port || undefined,
     }
   : null;
-const articleR2ImagePattern = articleR2PublicHost
-  ? {
+const articleR2ImagePatterns = articleR2PublicHosts.map((hostname) => ({
       protocol: 'https' as const,
-      hostname: articleR2PublicHost,
+      hostname,
       pathname: '/**',
-    }
-  : null;
+}));
 
 const nextConfig: NextConfig = {
   devIndicators: false,
 
   // ── next/image 远程图片域名白名单 ───────────────────────────
   images: {
+    unoptimized: true,
     remotePatterns: [
       // Console API 提供的封面图片
       { protocol: 'https', hostname: 'zgnknowledge.online' },
       ...(consoleImagePattern ? [consoleImagePattern] : []),
-      ...(articleR2ImagePattern ? [articleR2ImagePattern] : []),
+      ...articleR2ImagePatterns,
       // 常见外部图床 (GitHub / 微信公众号等)
       { protocol: 'https', hostname: '*.githubusercontent.com' },
       { protocol: 'https', hostname: 'mmbiz.qpic.cn' },
