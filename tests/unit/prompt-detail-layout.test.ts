@@ -118,11 +118,29 @@ describe('prompt detail related cards layout', () => {
         expect(html).not.toContain('href="/ai/prompts/categories/gemini-3"');
     });
 
-    it('does not prebuild DB-backed prompt detail pages during production builds', async () => {
+    it('deduplicates prompt detail loads across metadata and page render', async () => {
+        const { default: PromptDetailPage, generateMetadata } = await import('@/app/ai/prompts/[id]/page');
+
+        await generateMetadata({ params: Promise.resolve({ id: '42' }) });
+        await PromptDetailPage({ params: Promise.resolve({ id: '42' }) });
+
+        expect(mockGetPromptById).toHaveBeenCalledTimes(1);
+    });
+
+    it('prebuilds DB-backed prompt detail pages from prompt ids for ISR', async () => {
         const { generateStaticParams } = await import('@/app/ai/prompts/[id]/page');
 
-        await expect(generateStaticParams()).resolves.toEqual([]);
-        expect(mockGetAllPromptIds).not.toHaveBeenCalled();
+        await expect(generateStaticParams()).resolves.toEqual([
+            { id: '42' },
+        ]);
+        expect(mockGetAllPromptIds).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not force prompt detail pages to bypass static page caching', async () => {
+        const pageModule = await import('@/app/ai/prompts/[id]/page');
+
+        expect(pageModule.dynamic).toBeUndefined();
+        expect(pageModule.dynamicParams).toBe(false);
     });
 
     it('returns not found for non-numeric prompt ids without querying the database', async () => {

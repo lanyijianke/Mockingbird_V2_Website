@@ -26,6 +26,8 @@ describe('server entrypoint lazy imports', () => {
     });
 
     afterEach(() => {
+        vi.unstubAllGlobals();
+
         if (originalNextRuntime === undefined) {
             delete process.env.NEXT_RUNTIME;
         } else {
@@ -102,7 +104,7 @@ describe('server entrypoint lazy imports', () => {
 
         expect(response.status).toBe(200);
         expect(body.database.prompts).toBe(12);
-        expect(body.articleSources.articles).toBe(68);
+        expect(body.articleSources.articles).toBe(34);
         expect(state.dbImported).toBe(1);
         expect(state.articleImported).toBe(1);
         expect(state.schedulerImported).toBe(1);
@@ -135,6 +137,8 @@ describe('server entrypoint lazy imports', () => {
         });
 
         process.env.KNOWLEDGE_ADMIN_TOKEN = 'unit-test-token';
+        const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+        vi.stubGlobal('fetch', fetchMock);
 
         const route = await import('@/app/api/jobs/route');
 
@@ -156,6 +160,13 @@ describe('server entrypoint lazy imports', () => {
         await postResponse.json();
 
         expect(state.readmeImported).toBe(1);
+        expect(fetchMock).toHaveBeenCalledWith(
+            'http://localhost:5046/api/revalidate/content',
+            expect.objectContaining({
+                method: 'POST',
+                body: JSON.stringify({ type: 'prompt', action: 'sync' }),
+            })
+        );
     });
 
     it('does not import prompt data services until the prompts page is rendered', async () => {

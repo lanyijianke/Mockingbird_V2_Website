@@ -24,11 +24,7 @@ export async function GET() {
     }
 
     try {
-        const [aiCount, financeCount] = await Promise.all([
-            getArticleCount({ site: 'ai' }),
-            getArticleCount({ site: 'finance' }),
-        ]);
-        articleCount = aiCount + financeCount;
+        articleCount = await getArticleCount({ site: 'ai' });
     } catch {
         articleSourcesStatus = 'error';
     }

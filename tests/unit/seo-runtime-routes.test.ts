@@ -50,6 +50,7 @@ describe('SEO runtime routes', () => {
         expect(xml).toContain('<loc>https://zgnknowledge.online/ai/rankings/skills-trending</loc>');
         expect(xml).toContain('<loc>https://zgnknowledge.online/ai/articles/agent-workflow</loc>');
         expect(xml).toContain('<loc>https://zgnknowledge.online/ai/prompts/101</loc>');
+        expect(xml).not.toContain('/finance');
         expect(xml).not.toContain('/ai/rankings/skills-hot');
         expect(xml).not.toContain('/ai/rankings/topics');
         expect(xml).not.toContain('/ai/prompts/categories');

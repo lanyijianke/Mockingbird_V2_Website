@@ -102,6 +102,7 @@ describe('prompt remote source sync runner', () => {
             VideoPreviewUrl: null,
             CardPreviewVideoUrl: null,
             ImagesJson: null,
+            CopyCount: 7,
         });
         mockDownloadMedia.mockResolvedValue('/tmp/prompt-media/cat.webp');
         mockExecute.mockResolvedValue({ affectedRows: 1 });
@@ -132,6 +133,43 @@ describe('prompt remote source sync runner', () => {
         expect(mockExecute.mock.calls[0][1]).toContain(42);
     });
 
+    it('backfills generated copy counts for existing prompts that still have zero copies', async () => {
+        mockQueryOne.mockResolvedValue({
+            Id: 44,
+            CoverImageUrl: 'https://assets.zgnknowledge.online/prompts/media/images/cat.webp',
+            VideoPreviewUrl: null,
+            CardPreviewVideoUrl: null,
+            ImagesJson: JSON.stringify(['https://assets.zgnknowledge.online/prompts/media/images/cat.webp']),
+            CopyCount: 0,
+        });
+        mockExecute.mockResolvedValue({ affectedRows: 1 });
+
+        const { syncPromptSourceRecords } = await import('@/lib/pipelines/prompt-sources/remote-sync');
+        const report = await syncPromptSourceRecords(
+            {
+                id: 'test-source',
+                type: 'github-readme',
+                defaultCategory: 'gemini-3',
+                enabled: true,
+            },
+            [
+                {
+                    externalId: 'test-source:no-1',
+                    title: 'Gemini Prompt',
+                    content: 'Build a page',
+                    category: 'gemini-3',
+                    sourceUrl: 'https://example.com/gemini',
+                },
+            ]
+        );
+
+        expect(report.updated).toBe(1);
+        expect(mockExecute.mock.calls[0][0]).toContain('CopyCount = ?');
+        expect(mockExecute.mock.calls[0][1][0]).toBeGreaterThanOrEqual(100);
+        expect(mockExecute.mock.calls[0][1][0]).toBeLessThanOrEqual(9999);
+        expect(mockExecute.mock.calls[0][1]).toContain(44);
+    });
+
     it('does not try to generate local preview files from an existing R2 URL when there is no fresh source video', async () => {
         mockQueryOne.mockResolvedValue({
             Id: 43,
@@ -139,6 +177,7 @@ describe('prompt remote source sync runner', () => {
             VideoPreviewUrl: 'https://assets.zgnknowledge.online/prompts/media/videos/demo.mp4',
             CardPreviewVideoUrl: null,
             ImagesJson: JSON.stringify(['/content/prompts/media/cover.webp']),
+            CopyCount: 2,
         });
 
         const { syncPromptSourceRecords } = await import('@/lib/pipelines/prompt-sources/remote-sync');

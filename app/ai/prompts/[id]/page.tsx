@@ -13,10 +13,20 @@ import { safeJsonParse } from '../safeJsonParse';
 import './prompt-detail.css';
 
 export const runtime = 'nodejs';
+export const dynamicParams = false;
 export const revalidate = 3600;
 
+type PromptService = typeof import('@/lib/services/prompt-service');
+type PromptDetail = Awaited<ReturnType<PromptService['getPromptById']>>;
+
+// Reuse prompt detail reads while a static build worker renders metadata + page for the same id.
+const promptDetailLoads = new Map<number, Promise<PromptDetail>>();
+
 export async function generateStaticParams() {
-    return [];
+    const { getAllPromptIds } = await import('@/lib/services/prompt-service');
+    const ids = await getAllPromptIds();
+
+    return ids.map((id) => ({ id: String(id) }));
 }
 
 function summarizePrompt(prompt: { description?: string | null; content: string }): string {
@@ -32,8 +42,18 @@ function parsePromptId(id: string): number | null {
     return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
+async function getPromptDetail(promptId: number): Promise<PromptDetail> {
+    const existing = promptDetailLoads.get(promptId);
+    if (existing) return existing;
+
+    const load = import('@/lib/services/prompt-service')
+        .then(({ getPromptById }) => getPromptById(promptId));
+
+    promptDetailLoads.set(promptId, load);
+    return load;
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
-    const { getPromptById } = await import('@/lib/services/prompt-service');
     const { id } = await params;
     const promptId = parsePromptId(id);
 
@@ -41,7 +61,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
         return buildPromptsMetadata();
     }
 
-    const prompt = await getPromptById(promptId);
+    const prompt = await getPromptDetail(promptId);
 
     if (!prompt) {
         return buildPromptsMetadata();
@@ -59,7 +79,7 @@ export default async function PromptDetailPage({
 }: {
     params: Promise<{ id: string }>;
 }) {
-    const { getPromptById, getRelatedPrompts } = await import('@/lib/services/prompt-service');
+    const { getRelatedPrompts } = await import('@/lib/services/prompt-service');
     const { id } = await params;
     const promptId = parsePromptId(id);
 
@@ -67,7 +87,7 @@ export default async function PromptDetailPage({
         notFound();
     }
 
-    const prompt = await getPromptById(promptId);
+    const prompt = await getPromptDetail(promptId);
     if (!prompt) notFound();
 
     // 获取同分类推荐提示词

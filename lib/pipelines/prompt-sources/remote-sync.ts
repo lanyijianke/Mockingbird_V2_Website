@@ -19,6 +19,7 @@ interface ExistingPromptRecord {
     VideoPreviewUrl: string | null;
     CardPreviewVideoUrl: string | null;
     ImagesJson: string | null;
+    CopyCount: number | null;
 }
 
 interface ResolvedPromptMedia {
@@ -33,6 +34,28 @@ function mergeReport(target: PipelineReport, current: PipelineReport): void {
     target.newlyAdded += current.newlyAdded;
     target.updated += current.updated;
     target.skipped += current.skipped;
+}
+
+function generateCopyCountSeed(...parts: Array<string | number | null | undefined>): number {
+    const value = parts.filter((part) => part !== null && part !== undefined).join(':');
+    let hash = 2166136261;
+
+    for (let i = 0; i < value.length; i++) {
+        hash ^= value.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+    }
+
+    return 100 + (Math.abs(hash) % 9900);
+}
+
+function getGeneratedCopyCount(source: PromptSourceConfig, record: PromptImportRecord, existingId?: number): number {
+    return generateCopyCountSeed(
+        existingId,
+        record.category || source.defaultCategory,
+        record.sourceUrl,
+        record.rawTitle || record.title,
+        source.id
+    );
 }
 
 async function resolveRecordMedia(
@@ -100,7 +123,7 @@ async function resolveRecordMedia(
 async function findExistingRecord(record: PromptImportRecord): Promise<ExistingPromptRecord | null> {
     if (record.sourceUrl) {
         const existing = await queryOne<ExistingPromptRecord>(
-            'SELECT Id, CoverImageUrl, VideoPreviewUrl, CardPreviewVideoUrl, ImagesJson FROM Prompts WHERE SourceUrl = ?',
+            'SELECT Id, CoverImageUrl, VideoPreviewUrl, CardPreviewVideoUrl, ImagesJson, CopyCount FROM Prompts WHERE SourceUrl = ?',
             [record.sourceUrl]
         );
         if (existing) return existing;
@@ -108,7 +131,7 @@ async function findExistingRecord(record: PromptImportRecord): Promise<ExistingP
 
     if (record.rawTitle || record.title) {
         return queryOne<ExistingPromptRecord>(
-            'SELECT Id, CoverImageUrl, VideoPreviewUrl, CardPreviewVideoUrl, ImagesJson FROM Prompts WHERE RawTitle = ?',
+            'SELECT Id, CoverImageUrl, VideoPreviewUrl, CardPreviewVideoUrl, ImagesJson, CopyCount FROM Prompts WHERE RawTitle = ?',
             [record.rawTitle || record.title]
         );
     }
@@ -148,6 +171,10 @@ async function upsertPromptRecord(
             updates.push('ImagesJson = ?');
             updateArgs.push(media.imagesJson);
         }
+        if (!existing.CopyCount || existing.CopyCount <= 0) {
+            updates.push('CopyCount = ?');
+            updateArgs.push(getGeneratedCopyCount(source, record, existing.Id));
+        }
 
         if (updates.length === 0) return 'skipped';
 
@@ -171,7 +198,7 @@ async function upsertPromptRecord(
             media.videoPreviewUrl || null,
             media.cardPreviewVideoUrl || null,
             media.imagesJson || null,
-            Math.floor(Math.random() * 9900) + 100,
+            getGeneratedCopyCount(source, record),
         ]
     );
     return 'inserted';

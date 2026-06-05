@@ -59,7 +59,7 @@ describe('content revalidation', () => {
         expect(result.tags).toEqual(['prompts', 'prompts:detail:42']);
     });
 
-    it('revalidates article surfaces for all sites', async () => {
+    it('revalidates public article surfaces for the AI knowledge hub', async () => {
         const revalidatePath = vi.fn();
         const { revalidateContentChange } = await import('@/lib/cache/content-revalidation');
 
@@ -71,17 +71,13 @@ describe('content revalidation', () => {
         expect(result.paths).toEqual([
             '/',
             '/ai',
-            '/finance',
             '/ai/articles',
-            '/finance/articles',
             '/sitemap.xml',
         ]);
         expect(result.warmPaths).toEqual([
             '/',
             '/ai',
-            '/finance',
             '/ai/articles',
-            '/finance/articles',
         ]);
         expect(result.tags).toEqual(['articles']);
     });
@@ -119,9 +115,7 @@ describe('content revalidation', () => {
         expect(result.paths).toEqual([
             '/',
             '/ai',
-            '/finance',
             '/ai/articles',
-            '/finance/articles',
             '/ai/prompts',
             '/ai/rankings/github',
             '/ai/rankings/producthunt',

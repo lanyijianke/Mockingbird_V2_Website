@@ -11,8 +11,6 @@ const STATIC_PATHS = [
   '/ai/rankings/producthunt',
   '/ai/rankings/skills-trending',
   '/about',
-  '/finance',
-  '/finance/articles',
 ];
 
 function escapeXml(value: string): string {

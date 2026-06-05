@@ -9,6 +9,11 @@ type QueryParams = (string | number | boolean | null | Buffer | Date)[];
 
 let pool: mysql.Pool | null = null;
 
+function getConnectionLimit(): number {
+    const parsed = Number(process.env.MYSQL_CONNECTION_LIMIT);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : 2;
+}
+
 // MySQL DATETIME columns return Date objects; normalize to YYYY-MM-DD HH:mm:ss strings.
 function serializeRow(row: Record<string, unknown>): Record<string, unknown> {
     for (const key of Object.keys(row)) {
@@ -31,7 +36,7 @@ async function getPool(): Promise<mysql.Pool> {
         pool = mysql.createPool({
             uri: url,
             waitForConnections: true,
-            connectionLimit: 10,
+            connectionLimit: getConnectionLimit(),
             charset: 'utf8mb4',
         });
 

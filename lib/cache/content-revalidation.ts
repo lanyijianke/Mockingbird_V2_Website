@@ -3,7 +3,7 @@ import { getArticleDetailPath, getArticleListPath } from '@/lib/articles/article
 import { buildAbsoluteUrl } from '@/lib/site-config';
 import { cacheTags } from '@/lib/cache/keys';
 
-export type ArticleSite = 'ai' | 'finance';
+export type ArticleSite = 'ai';
 export type RankingKind = 'github' | 'producthunt' | 'skills-trending' | 'all';
 
 export type ContentRevalidationEvent =
@@ -50,9 +50,7 @@ function allArticlePaths(): string[] {
     return [
         '/',
         '/ai',
-        '/finance',
         getArticleListPath('ai'),
-        getArticleListPath('finance'),
         '/sitemap.xml',
     ];
 }
@@ -76,9 +74,7 @@ function allPaths(): string[] {
     return [
         '/',
         '/ai',
-        '/finance',
         getArticleListPath('ai'),
-        getArticleListPath('finance'),
         '/ai/prompts',
         ...Object.values(RANKING_PATHS),
         '/sitemap.xml',
@@ -90,13 +86,12 @@ function warmPathsForEvent(event: ContentRevalidationEvent): string[] {
 
     if (event.type === 'article') {
         paths.push(getArticleListPath(event.site));
-        if (event.site === 'finance') paths.push('/finance');
         if (event.slug) paths.push(getArticleDetailPath(event.site, event.slug));
         return paths;
     }
 
     if (event.type === 'articles') {
-        return ['/', '/ai', '/finance', getArticleListPath('ai'), getArticleListPath('finance')];
+        return ['/', '/ai', getArticleListPath('ai')];
     }
 
     if (event.type === 'prompt') {
@@ -112,9 +107,7 @@ function warmPathsForEvent(event: ContentRevalidationEvent): string[] {
     return [
         '/',
         '/ai',
-        '/finance',
         getArticleListPath('ai'),
-        getArticleListPath('finance'),
         '/ai/prompts',
         ...Object.values(RANKING_PATHS),
     ];

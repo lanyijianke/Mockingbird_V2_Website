@@ -14,9 +14,8 @@ export default function SiteNav() {
   const isRootHome = pathname === '/';
   const isAbout = pathname.startsWith('/about');
   const isAi = isRootHome || isAbout || pathname.startsWith('/ai');
-  const isFinance = pathname.startsWith('/finance');
 
-  const brandHref = isAi ? '/' : isFinance ? '/finance' : '/';
+  const brandHref = '/';
 
   return (
     <nav className="top-nav">
@@ -89,17 +88,10 @@ export default function SiteNav() {
           </>
         )}
 
-        {/* ── Finance subsite navigation ── */}
-        {isFinance && (
-          <>
-            <Link href={getArticleListPath('finance')} className="nav-link">金融文章</Link>
-          </>
-        )}
-
         <ThemeToggle />
 
         {/* ── Default navigation ── */}
-        {!isAi && !isFinance && (
+        {!isAi && (
           <>
             <Link href={getArticleListPath('ai')} className="nav-link">AI</Link>
           </>

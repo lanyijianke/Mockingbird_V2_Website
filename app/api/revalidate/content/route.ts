@@ -27,7 +27,7 @@ function isRankingAction(value: unknown): value is Extract<ContentRevalidationEv
 }
 
 function isArticleSite(value: unknown): value is ArticleSite {
-    return value === 'ai' || value === 'finance';
+    return value === 'ai';
 }
 
 function isRankingKind(value: unknown): value is RankingKind {
