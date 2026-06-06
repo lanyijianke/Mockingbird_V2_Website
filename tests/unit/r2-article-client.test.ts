@@ -105,4 +105,38 @@ describe('r2 article client', () => {
         const { readR2ObjectText } = await import('@/lib/articles/r2-client');
         await expect(readR2ObjectText('bucket', 'key')).rejects.toThrow(/R2 credentials/i);
     });
+
+    it('lists R2 object keys under a prefix', async () => {
+        process.env.KNOWLEDGE_R2_ACCOUNT_ID = 'account-id';
+        process.env.KNOWLEDGE_R2_ACCESS_KEY_ID = 'access-key';
+        process.env.KNOWLEDGE_R2_SECRET_ACCESS_KEY = 'secret-key';
+
+        const send = vi
+            .fn()
+            .mockResolvedValueOnce({
+                Contents: [
+                    { Key: 'ai/state/articles/one.json' },
+                    { Key: 'ai/state/articles/two.json' },
+                ],
+                IsTruncated: true,
+                NextContinuationToken: 'next-page',
+            })
+            .mockResolvedValueOnce({
+                Contents: [{ Key: 'ai/state/articles/three.json' }],
+                IsTruncated: false,
+            });
+
+        vi.mocked(S3Client).mockImplementation(function mockS3Client() {
+            return { send } as unknown as S3Client;
+        });
+
+        const { listR2ObjectKeys } = await import('@/lib/articles/r2-client');
+        await expect(listR2ObjectKeys('knowledge-articles', 'ai/state/articles/')).resolves.toEqual([
+            'ai/state/articles/one.json',
+            'ai/state/articles/two.json',
+            'ai/state/articles/three.json',
+        ]);
+
+        expect(send).toHaveBeenCalledTimes(2);
+    });
 });

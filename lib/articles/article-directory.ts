@@ -51,6 +51,7 @@ const DEFAULT_CATEGORY_NAMES: Record<string, string> = {
     'ai-business': 'AI商业',
     'ai-opinion': 'AI观点',
 };
+const DEFAULT_ARTICLE_COVER_URL = '/images/default-cover.png';
 
 function buildAbsoluteSourcePath(config: ArticleSourceConfig, relativePath: string): string {
     if (config.type !== 'local') {
@@ -114,6 +115,26 @@ export function buildArticleAssetUrl(
     return `/api/article-assets/${entry.site}/${entry.slug}/${sanitizedPath}`.replace(/\/+/g, '/');
 }
 
+function isExternalUrl(value: string): boolean {
+    return /^https?:\/\//i.test(value);
+}
+
+function resolveCoverUrl(
+    config: ArticleSourceConfig,
+    entry: Pick<ArticleDirectoryEntry, 'site' | 'slug' | 'sourceType' | 'assetBasePath'>,
+    coverAssetPath: string,
+): string {
+    if (!coverAssetPath || isExternalUrl(coverAssetPath)) {
+        return DEFAULT_ARTICLE_COVER_URL;
+    }
+
+    if (config.type === 'r2') {
+        return joinPublicUrl(entry.assetBasePath, coverAssetPath);
+    }
+
+    return buildArticleAssetUrl(entry, coverAssetPath);
+}
+
 function isValidPublishedArticle(article: ArticleSourceManifestArticle): boolean {
     return article.status === 'published';
 }
@@ -144,7 +165,9 @@ function mapManifestArticle(
     article: ArticleSourceManifestArticle,
     categories: ArticleSourceCategory[],
 ): ArticleDirectoryEntry {
-    const coverAssetPath = toAssetRelativePath(article.contentPath, article.coverImage);
+    const coverAssetPath = article.coverImage && !isExternalUrl(article.coverImage)
+        ? toAssetRelativePath(article.contentPath, article.coverImage)
+        : '';
     const localContentFilePath = config.type === 'local'
         ? buildAbsoluteSourcePath(config, article.contentPath)
         : undefined;
@@ -173,10 +196,8 @@ function mapManifestArticle(
         sourcePlatform: article.sourcePlatform,
         type: article.type,
         assetBasePath,
-        coverImagePath: article.coverImage,
-        coverUrl: config.type === 'r2'
-            ? joinPublicUrl(assetBasePath, coverAssetPath)
-            : buildArticleAssetUrl({
+        coverImagePath: coverAssetPath,
+        coverUrl: resolveCoverUrl(config, {
                 site: manifest.site,
                 slug: article.slug,
                 sourceType: config.type,

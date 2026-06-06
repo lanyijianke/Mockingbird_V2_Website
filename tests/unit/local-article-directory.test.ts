@@ -168,6 +168,50 @@ describe('local article directory', () => {
         expect(directory.entries[0].coverUrl).toBe('/api/article-assets/ai/build-astonishing-ui-with-codex/images/cover.jpg');
     });
 
+    it('falls back to the site default cover when a local manifest has no cover image', async () => {
+        const aiRoot = path.join(tempRoot, 'web-article');
+        await fs.mkdir(aiRoot, { recursive: true });
+
+        await fs.writeFile(path.join(aiRoot, 'manifest.json'), JSON.stringify({
+            site: 'ai',
+            source: 'web-article',
+            articles: [
+                {
+                    id: 'no-cover',
+                    slug: 'no-cover',
+                    title: 'No Cover',
+                    summary: 'summary',
+                    category: 'ai-tech',
+                    author: '@author',
+                    originalUrl: 'https://example.com/no-cover',
+                    sourcePlatform: 'website',
+                    type: 'article',
+                    coverImage: '',
+                    contentPath: 'articles/no-cover/index.md',
+                    publishedAt: '2026-06-04T10:00:00.000Z',
+                    status: 'published',
+                },
+            ],
+        }, null, 2));
+
+        process.env.ARTICLE_LOCAL_SOURCES = JSON.stringify([
+            {
+                site: 'ai',
+                source: 'web-article',
+                rootPath: aiRoot,
+                manifestPath: 'manifest.json',
+            },
+        ]);
+
+        const directory = await fetchAggregatedArticleDirectory({ forceRefresh: true });
+
+        expect(directory.entries[0]).toMatchObject({
+            slug: 'no-cover',
+            coverImagePath: '',
+            coverUrl: '/images/default-cover.png',
+        });
+    });
+
     it('throws when the manifest disappears because ISR is the public cache layer', async () => {
         const aiRoot = path.join(tempRoot, 'web-article');
         await fs.mkdir(path.join(aiRoot, 'articles', 'prompt-caching'), { recursive: true });

@@ -6,6 +6,7 @@ import {
     useEffect,
     useMemo,
     useState,
+    useSyncExternalStore,
     type ReactNode,
 } from 'react';
 import {
@@ -24,12 +25,22 @@ type ThemeContextValue = {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-function getPrefersDark(): boolean {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-        return false;
-    }
+function subscribeToPrefersDark(onStoreChange: () => void): () => void {
+    const media = window.matchMedia?.('(prefers-color-scheme: dark)');
+    if (!media) return () => undefined;
 
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    media.addEventListener?.('change', onStoreChange);
+    return () => {
+        media.removeEventListener?.('change', onStoreChange);
+    };
+}
+
+function getPrefersDarkSnapshot(): boolean {
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+}
+
+function getServerPrefersDarkSnapshot(): boolean {
+    return false;
 }
 
 function syncDocumentTheme(resolvedTheme: ThemeResolved): void {
@@ -52,21 +63,11 @@ export function ThemeProvider({
     initialMode?: ThemeMode;
 }) {
     const [mode, setMode] = useState<ThemeMode>(() => initialMode);
-    const [prefersDark, setPrefersDark] = useState(getPrefersDark);
-
-    useEffect(() => {
-        const media = window.matchMedia?.('(prefers-color-scheme: dark)');
-        if (!media) return;
-
-        const handleChange = (event: MediaQueryListEvent) => {
-            setPrefersDark(event.matches);
-        };
-
-        media.addEventListener?.('change', handleChange);
-        return () => {
-            media.removeEventListener?.('change', handleChange);
-        };
-    }, []);
+    const prefersDark = useSyncExternalStore(
+        subscribeToPrefersDark,
+        getPrefersDarkSnapshot,
+        getServerPrefersDarkSnapshot,
+    );
 
     const resolvedTheme = useMemo(() => resolveThemeMode(mode, prefersDark), [mode, prefersDark]);
 

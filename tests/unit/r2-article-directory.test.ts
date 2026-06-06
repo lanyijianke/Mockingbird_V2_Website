@@ -170,4 +170,49 @@ describe('R2 article directory', () => {
             contentKey: 'ai/articles/published/stateful-publish/index.md',
         });
     });
+
+    it('falls back to the site default cover when an R2 manifest contains an external cover URL', async () => {
+        process.env.KNOWLEDGE_ARTICLE_R2_SOURCES = JSON.stringify([
+            {
+                site: 'ai',
+                source: 'web-article',
+                bucket: 'knowledge-articles',
+                prefix: 'ai',
+                manifestPath: 'manifest.json',
+                publicBaseUrl: 'https://assets.zgnknowledge.online/ai',
+            },
+        ]);
+        delete process.env.ARTICLE_LOCAL_SOURCES;
+
+        const { readR2ObjectText } = await import('@/lib/articles/r2-client');
+        vi.mocked(readR2ObjectText).mockResolvedValueOnce(JSON.stringify({
+            site: 'ai',
+            source: 'web-article',
+            articles: [
+                {
+                    id: 'ai-1',
+                    slug: 'external-cover',
+                    title: 'External Cover',
+                    summary: 'summary',
+                    category: 'ai-tech',
+                    author: '@author',
+                    originalUrl: 'https://example.com/external-cover',
+                    sourcePlatform: 'website',
+                    type: 'article',
+                    coverImage: 'https://cdn.example.com/cover.png',
+                    contentPath: 'articles/published/external-cover/index.md',
+                    publishedAt: '2026-06-04T10:00:00.000Z',
+                    status: 'published',
+                },
+            ],
+        }));
+
+        const directory = await fetchAggregatedArticleDirectory({ forceRefresh: true });
+
+        expect(directory.entries[0]).toMatchObject({
+            slug: 'external-cover',
+            coverImagePath: '',
+            coverUrl: '/images/default-cover.png',
+        });
+    });
 });

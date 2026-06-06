@@ -1,4 +1,4 @@
-import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, ListObjectsV2Command, S3Client } from '@aws-sdk/client-s3';
 
 let cachedClient: S3Client | null = null;
 let cachedSignature = '';
@@ -38,4 +38,26 @@ export async function readR2ObjectText(bucket: string, key: string): Promise<str
     }
 
     return response.Body.transformToString('utf-8');
+}
+
+export async function listR2ObjectKeys(bucket: string, prefix: string): Promise<string[]> {
+    const client = getR2Client();
+    const keys: string[] = [];
+    let continuationToken: string | undefined;
+
+    do {
+        const response = await client.send(new ListObjectsV2Command({
+            Bucket: bucket,
+            Prefix: prefix,
+            ContinuationToken: continuationToken,
+        }));
+
+        for (const object of response.Contents || []) {
+            if (object.Key) keys.push(object.Key);
+        }
+
+        continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
+    } while (continuationToken);
+
+    return keys;
 }

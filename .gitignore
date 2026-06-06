@@ -50,3 +50,4 @@ raw-incoming/prompts/
 test-results/
 .playwright-mcp/
 .superpowers/
+.tmp/

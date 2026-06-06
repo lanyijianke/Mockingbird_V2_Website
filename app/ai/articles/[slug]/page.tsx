@@ -12,7 +12,7 @@ import {
     buildArticleSchema,
 } from '@/lib/seo/schema';
 import { buildAbsoluteUrl } from '@/lib/site-config';
-import { extractToc, rehypeUniqueHeadingIds } from '@/lib/articles/markdown-headings';
+import { renderArticleMarkdown } from '@/lib/articles/render-markdown';
 import ArticleReaderClient from '@/app/articles/[slug]/ArticleReaderClient';
 import '@/app/articles/[slug]/article-reader.css';
 
@@ -62,7 +62,6 @@ export default async function AiArticleDetailPage({
     if (!article) notFound();
 
     const content = article.content || '';
-    const toc = extractToc(content);
     const readingMinutes = estimateReadingMinutes(content);
     const relatedArticles = await getRelatedArticles(article.category, slug, 6, { site: 'ai' });
 
@@ -73,23 +72,7 @@ export default async function AiArticleDetailPage({
         day: 'numeric',
     });
 
-    const { unified } = await import('unified');
-    const remarkParse = (await import('remark-parse')).default;
-    const remarkGfm = (await import('remark-gfm')).default;
-    const remarkRehype = (await import('remark-rehype')).default;
-    const rehypeHighlight = (await import('rehype-highlight')).default;
-    const rehypeStringify = (await import('rehype-stringify')).default;
-
-    const result = await unified()
-        .use(remarkParse)
-        .use(remarkGfm)
-        .use(remarkRehype)
-        .use(rehypeUniqueHeadingIds)
-        .use(rehypeHighlight, { detect: true, ignoreMissing: true })
-        .use(rehypeStringify)
-        .process(content);
-
-    const renderedHtml = String(result).replace(/<img /g, '<img loading="lazy" ');
+    const { toc, renderedHtml } = await renderArticleMarkdown(content);
     const articleUrl = getArticleDetailPath('ai', slug);
     const articleShareUrl = buildAbsoluteUrl(articleUrl);
     const explorationLinks = [

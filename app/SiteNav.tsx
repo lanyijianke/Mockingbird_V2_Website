@@ -48,7 +48,10 @@ export default function SiteNav() {
               unoptimized
             />
           </span>
-          <span className="nav-brand-name">{NAV_BRAND_NAME}</span>
+          <span className="nav-brand-name">
+            <span className="nav-brand-primary">知更鸟</span>
+            <span className="nav-brand-secondary">AI 知识库</span>
+          </span>
         </Link>
         <div className="nav-divider" />
       </div>
