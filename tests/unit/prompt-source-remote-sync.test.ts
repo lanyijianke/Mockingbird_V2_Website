@@ -8,6 +8,8 @@ const mockCreateCardPreviewVideo = vi.fn();
 const mockExtractFirstFrame = vi.fn();
 const mockUploadPromptMediaFileToR2 = vi.fn(async (value: string): Promise<string | null> => value);
 const mockWithPromptMediaWorkspace = vi.fn(async (task: (workspaceDir: string) => Promise<unknown>) => task('/tmp/prompt-media'));
+const mockIndexPrompt = vi.fn();
+const mockLoggerError = vi.fn();
 
 vi.mock('@/lib/db', () => ({
     queryOne: mockQueryOne,
@@ -31,9 +33,13 @@ vi.mock('@/lib/utils/logger', () => ({
         debug: vi.fn(),
         info: vi.fn(),
         warn: vi.fn(),
-        error: vi.fn(),
+        error: mockLoggerError,
         persist: vi.fn(),
     },
+}));
+
+vi.mock('@/lib/services/agent-search-indexer', () => ({
+    indexPrompt: mockIndexPrompt,
 }));
 
 describe('prompt remote source sync runner', () => {
@@ -41,6 +47,7 @@ describe('prompt remote source sync runner', () => {
         vi.clearAllMocks();
         mockCreateCardPreviewVideo.mockResolvedValue(null);
         mockExtractFirstFrame.mockResolvedValue(null);
+        mockIndexPrompt.mockResolvedValue({ type: 'prompt', id: '51', status: 'indexed' });
         mockUploadPromptMediaFileToR2.mockImplementation(async (value: string) => {
             if (value.endsWith('/cat.webp')) return 'https://assets.zgnknowledge.online/prompts/media/images/cat.webp';
             if (value.endsWith('/demo.mp4')) return 'https://assets.zgnknowledge.online/prompts/media/videos/demo.mp4';
@@ -48,6 +55,118 @@ describe('prompt remote source sync runner', () => {
             if (value.endsWith('/demo-cover.webp')) return 'https://assets.zgnknowledge.online/prompts/media/images/demo-cover.webp';
             return value;
         });
+    });
+
+    it('indexes newly inserted prompts after sync writes the row', async () => {
+        mockQueryOne.mockResolvedValue(null);
+        mockExecute.mockResolvedValue({ affectedRows: 1, insertId: 51 });
+
+        const { syncPromptSourceRecords } = await import('@/lib/pipelines/prompt-sources/remote-sync');
+        const report = await syncPromptSourceRecords(
+            {
+                id: 'test-source',
+                type: 'github-readme',
+                defaultCategory: 'gpt-image-2',
+                enabled: true,
+            },
+            [
+                {
+                    externalId: 'test-source:no-5',
+                    title: 'Indexed Prompt',
+                    content: 'Draw a product',
+                    category: 'gpt-image-2',
+                    sourceUrl: 'https://example.com/indexed',
+                },
+            ]
+        );
+
+        expect(report.newlyAdded).toBe(1);
+        expect(mockIndexPrompt).toHaveBeenCalledWith(51);
+    });
+
+    it('logs prompt indexing failures without failing sync', async () => {
+        mockQueryOne.mockResolvedValue({
+            Id: 52,
+            CoverImageUrl: null,
+            VideoPreviewUrl: null,
+            CardPreviewVideoUrl: null,
+            ImagesJson: null,
+            CopyCount: 1,
+        });
+        mockDownloadMedia.mockResolvedValue('/tmp/prompt-media/cat.webp');
+        mockExecute.mockResolvedValue({ affectedRows: 1, insertId: 0 });
+        mockIndexPrompt.mockRejectedValueOnce(new Error('index unavailable'));
+
+        const { syncPromptSourceRecords } = await import('@/lib/pipelines/prompt-sources/remote-sync');
+        const report = await syncPromptSourceRecords(
+            {
+                id: 'test-source',
+                type: 'github-readme',
+                defaultCategory: 'gpt-image-2',
+                enabled: true,
+            },
+            [
+                {
+                    externalId: 'test-source:no-6',
+                    title: 'Updated Prompt',
+                    content: 'Draw a cat',
+                    category: 'gpt-image-2',
+                    sourceUrl: 'https://example.com/updated',
+                    mediaUrls: ['https://example.com/cat.jpg'],
+                },
+            ]
+        );
+
+        expect(report.updated).toBe(1);
+        expect(mockIndexPrompt).toHaveBeenCalledWith(52);
+        expect(mockLoggerError).toHaveBeenCalledWith('PromptSourceSync', '提示词索引失败: 52', expect.any(Error));
+    });
+
+    it('updates changed core fields for existing prompts and reindexes them', async () => {
+        mockQueryOne.mockResolvedValue({
+            Id: 53,
+            Title: 'Old title',
+            RawTitle: 'Old title',
+            Description: 'Old description',
+            Content: 'Old content',
+            Category: 'old-category',
+            Author: 'Old author',
+            SourceUrl: 'https://example.com/core',
+            CoverImageUrl: 'https://assets.example/cover.webp',
+            VideoPreviewUrl: null,
+            CardPreviewVideoUrl: null,
+            ImagesJson: JSON.stringify(['https://assets.example/cover.webp']),
+            CopyCount: 3,
+        });
+        mockExecute.mockResolvedValue({ affectedRows: 1, insertId: 0 });
+
+        const { syncPromptSourceRecords } = await import('@/lib/pipelines/prompt-sources/remote-sync');
+        const report = await syncPromptSourceRecords(
+            {
+                id: 'test-source',
+                type: 'github-readme',
+                defaultCategory: 'gpt-image-2',
+                enabled: true,
+            },
+            [
+                {
+                    externalId: 'test-source:no-7',
+                    title: 'New title',
+                    rawTitle: 'New title',
+                    description: 'New description',
+                    content: 'New content',
+                    category: 'gpt-image-2',
+                    author: 'New author',
+                    sourceUrl: 'https://example.com/core',
+                },
+            ]
+        );
+
+        expect(report.updated).toBe(1);
+        expect(mockExecute.mock.calls[0][0]).toContain('Title = ?');
+        expect(mockExecute.mock.calls[0][0]).toContain('Content = ?');
+        expect(mockExecute.mock.calls[0][1]).toEqual(expect.arrayContaining(['New title', 'New content', 'gpt-image-2', 53]));
+        expect(mockIndexPrompt).toHaveBeenCalledWith(53);
     });
 
     it('imports normalized records through the existing Prompts table shape', async () => {
