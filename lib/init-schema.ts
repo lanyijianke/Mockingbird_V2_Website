@@ -86,6 +86,38 @@ export async function initDatabase(conn: PoolConnection): Promise<void> {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
+    await conn.query(`
+        CREATE TABLE IF NOT EXISTS AgentSearchDocuments (
+            Id              INT PRIMARY KEY AUTO_INCREMENT,
+            ContentType     VARCHAR(20) NOT NULL,
+            ContentId       VARCHAR(200) NOT NULL,
+            Site            VARCHAR(50) NOT NULL DEFAULT 'ai',
+            Title           VARCHAR(500) NOT NULL DEFAULT '',
+            Summary         TEXT DEFAULT NULL,
+            Category        VARCHAR(100) DEFAULT NULL,
+            PublicUrl       VARCHAR(1000) DEFAULT NULL,
+            CoverUrl        VARCHAR(1000) DEFAULT NULL,
+            SearchableText  LONGTEXT DEFAULT NULL,
+            MetadataJson    LONGTEXT DEFAULT NULL,
+            SourceUpdatedAt DATETIME DEFAULT NULL,
+            ContentHash     VARCHAR(64) DEFAULT NULL,
+            IndexedAt       DATETIME DEFAULT NOW()
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    await conn.query(`
+        CREATE TABLE IF NOT EXISTS AgentSearchChunks (
+            Id              INT PRIMARY KEY AUTO_INCREMENT,
+            DocumentId      INT NOT NULL,
+            ChunkIndex      INT NOT NULL DEFAULT 0,
+            ChunkText       LONGTEXT NOT NULL,
+            ChunkHash       VARCHAR(64) NOT NULL,
+            EmbeddingJson   LONGTEXT DEFAULT NULL,
+            EmbeddingModel  VARCHAR(100) DEFAULT NULL,
+            EmbeddedAt      DATETIME DEFAULT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
     await ensureIndex(conn, 'idx_systemlogs_level', `CREATE INDEX idx_systemlogs_level ON SystemLogs(Level)`);
     await ensureIndex(conn, 'idx_systemlogs_source', `CREATE INDEX idx_systemlogs_source ON SystemLogs(Source)`);
     await ensureIndex(conn, 'idx_systemlogs_created', `CREATE INDEX idx_systemlogs_created ON SystemLogs(CreatedAt)`);
@@ -118,5 +150,13 @@ export async function initDatabase(conn: PoolConnection): Promise<void> {
     await ensureIndex(conn, 'idx_prompts_active', `CREATE INDEX idx_prompts_active ON Prompts(IsActive)`);
     await ensureIndex(conn, 'idx_prompts_sourceurl', `CREATE INDEX idx_prompts_sourceurl ON Prompts(SourceUrl(255))`);
     await ensureIndex(conn, 'idx_prompts_rawtitle', `CREATE INDEX idx_prompts_rawtitle ON Prompts(RawTitle)`);
+
+    await ensureIndex(conn, 'uniq_agent_search_document', `CREATE UNIQUE INDEX uniq_agent_search_document ON AgentSearchDocuments(ContentType, Site, ContentId)`);
+    await ensureIndex(conn, 'idx_agent_documents_type_site', `CREATE INDEX idx_agent_documents_type_site ON AgentSearchDocuments(ContentType, Site)`);
+    await ensureIndex(conn, 'idx_agent_documents_category', `CREATE INDEX idx_agent_documents_category ON AgentSearchDocuments(Category)`);
+    await ensureIndex(conn, 'idx_agent_documents_updated', `CREATE INDEX idx_agent_documents_updated ON AgentSearchDocuments(SourceUpdatedAt)`);
+    await ensureIndex(conn, 'idx_agent_documents_indexed', `CREATE INDEX idx_agent_documents_indexed ON AgentSearchDocuments(IndexedAt)`);
+    await ensureIndex(conn, 'idx_agent_chunks_document', `CREATE INDEX idx_agent_chunks_document ON AgentSearchChunks(DocumentId)`);
+    await ensureIndex(conn, 'idx_agent_chunks_hash', `CREATE INDEX idx_agent_chunks_hash ON AgentSearchChunks(ChunkHash)`);
 
 }

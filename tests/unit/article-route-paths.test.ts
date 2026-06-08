@@ -9,7 +9,7 @@ describe('article route paths', () => {
     it('builds canonical paths for AI articles and generic article sources', () => {
         expect(getArticleListPath('ai')).toBe('/ai/articles');
         expect(getArticleDetailPath('ai', 'prompt-caching')).toBe('/ai/articles/prompt-caching');
-        expect(getArticleCategoryFilterPath('ai', 'tech-practice')).toBe('/ai/articles?category=tech-practice');
+        expect(getArticleCategoryFilterPath('ai', 'engineering')).toBe('/ai/articles?category=engineering');
         expect(getArticleListPath('research')).toBe('/research/articles');
         expect(getArticleDetailPath('research', 'field-notes')).toBe('/research/articles/field-notes');
         expect(getArticleCategoryFilterPath('research', 'macro')).toBe('/research/articles?category=macro');

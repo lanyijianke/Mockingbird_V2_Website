@@ -22,4 +22,10 @@ describe('content security policy', () => {
 
         expect(csp).toContain('https://static.cloudflareinsights.com');
     });
+
+    it('allows the Busuanzi visitor counter script in production', () => {
+        const csp = buildContentSecurityPolicy(false);
+
+        expect(csp).toContain('https://cdn.busuanzi.cc');
+    });
 });

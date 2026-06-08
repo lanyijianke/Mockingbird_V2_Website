@@ -25,10 +25,45 @@ function createChecksum(content) {
     return `sha256:${crypto.createHash('sha256').update(content).digest('hex')}`;
 }
 
+const SITE_CATEGORIES = new Set([
+    'fundamentals',
+    'engineering',
+    'devtools',
+    'workflows',
+    'applications',
+    'cases',
+    'opinions',
+]);
+
+function normalizeArticleCategory(value, handoff = {}) {
+    const raw = `${value || ''}`.trim().toLowerCase();
+    if (SITE_CATEGORIES.has(raw)) return raw;
+    if (raw === 'ai-tech') return 'engineering';
+    if (raw === 'ai-application') return 'applications';
+    if (raw === 'ai-opinion') return 'opinions';
+
+    const candidates = [
+        raw,
+        `${handoff.analysis?.typeTags?.primaryDomain || ''}`.toLowerCase(),
+        `${handoff.analysis?.typeTags?.secondaryDomain || ''}`.toLowerCase(),
+        `${handoff.analysis?.typeTags?.tertiaryTag || ''}`.toLowerCase(),
+        ...((handoff.analysis?.categoryHints || []).map((item) => `${item}`.toLowerCase())),
+    ].filter(Boolean);
+
+    if (candidates.some((item) => /opinion|观点|commentary|reflection|反思|critique|trend/.test(item))) return 'opinions';
+    if (candidates.some((item) => /case|案例|customer|客户|company|公司|production|落地案例/.test(item))) return 'cases';
+    if (candidates.some((item) => /devtool|developer|开发工具|codex|claude code|repo|repository|ide|sdk/.test(item))) return 'devtools';
+    if (candidates.some((item) => /workflow|工作流|habit|习惯|automation|自动化|configuration|配置|process|流程|productivity|效率/.test(item))) return 'workflows';
+    if (candidates.some((item) => /application|应用|use[-_ ]?case|tool|product|产品|设计|design/.test(item))) return 'applications';
+    if (candidates.some((item) => /fundamental|基础|concept|概念|llm|mcp|rag|skill|agent_configuration/.test(item))) return 'fundamentals';
+    return 'engineering';
+}
+
 function inferCategory(handoff) {
-    return handoff.analysis?.typeTags?.contentCategory
-        || handoff.analysis?.categoryHints?.[0]
-        || 'ai-tech';
+    return normalizeArticleCategory(
+        handoff.analysis?.typeTags?.contentCategory || handoff.analysis?.categoryHints?.[0],
+        handoff,
+    );
 }
 
 function inferSummary(handoff, translatedSummary) {

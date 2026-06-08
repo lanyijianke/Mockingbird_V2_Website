@@ -1,4 +1,5 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
@@ -80,7 +81,7 @@ const chineseHandoff = {
     },
     analysis: {
         summary: '解释 Agent 工作流中审计状态和人工复核的重要性。',
-        categoryHints: ['ai-application'],
+        categoryHints: ['applications'],
     },
     mediaAssets: [
         {
@@ -114,7 +115,7 @@ const englishHandoff = {
     },
     analysis: {
         summary: 'A note about review gates in production agent workflows.',
-        categoryHints: ['ai-application'],
+        categoryHints: ['applications'],
     },
     mediaAssets: [
         {
@@ -126,6 +127,24 @@ const englishHandoff = {
 };
 
 describe('console knowledge handoff importer', () => {
+    it('publishes generated covers with content-versioned paths to avoid CDN stale cover caches', () => {
+        const script = fs.readFileSync('/Users/grank/.codex/skills/console-knowledge-handoff/scripts/console-knowledge-handoff.mjs', 'utf8');
+
+        expect(script).toContain('versionedCoverImagePath');
+        expect(script).toContain('cover-');
+        expect(script).not.toContain("coverImage: 'images/cover.jpg'");
+    });
+
+    it('does not make the handoff publish skill write Agent search indexes', () => {
+        const skill = fs.readFileSync('/Users/grank/.codex/skills/console-knowledge-handoff/SKILL.md', 'utf8');
+        const script = fs.readFileSync('/Users/grank/.codex/skills/console-knowledge-handoff/scripts/console-knowledge-handoff.mjs', 'utf8');
+
+        expect(script).not.toContain('/api/agent/index');
+        expect(script).toContain('agentIndexing');
+        expect(skill).toContain('AgentIndexSync');
+        expect(skill).toContain('不得调用 `/api/agent/index`');
+    });
+
     it('stages a Chinese handoff into review without mutating the published manifest', async () => {
         const store = new MemoryR2Store();
         const manifestBefore = JSON.stringify({
@@ -381,7 +400,7 @@ describe('console knowledge handoff importer', () => {
                     summary: '已暂存摘要',
                     originalUrl: englishHandoff.source.sourceUrl,
                     sourceLocator: 'r2://content-hub-r2/knowledge-imports/console/existing.json',
-                    category: 'ai-application',
+                    category: 'applications',
                     language: 'en',
                     translationReview: {
                         method: 'parallel-subagents-maker-checker',

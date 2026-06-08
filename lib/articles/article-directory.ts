@@ -46,10 +46,17 @@ export interface ArticleDirectorySnapshot {
 }
 
 const DEFAULT_CATEGORY_NAMES: Record<string, string> = {
-    'ai-tech': 'AI技术',
-    'ai-application': 'AI应用',
+    fundamentals: '基础概念',
+    engineering: '工程架构',
+    devtools: '开发工具',
+    workflows: '工作流',
+    applications: '应用实践',
+    cases: '案例拆解',
+    opinions: '观点反思',
+    'ai-tech': '工程架构',
+    'ai-application': '应用实践',
     'ai-business': 'AI商业',
-    'ai-opinion': 'AI观点',
+    'ai-opinion': '观点反思',
 };
 const DEFAULT_ARTICLE_COVER_URL = '/images/default-cover.png';
 

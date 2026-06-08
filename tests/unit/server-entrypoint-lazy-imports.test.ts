@@ -114,10 +114,16 @@ describe('server entrypoint lazy imports', () => {
         const state = {
             schedulerImported: 0,
             readmeImported: 0,
+            agentIndexImported: 0,
             startScheduler: vi.fn(),
             stopScheduler: vi.fn(),
             getSchedulerStatus: vi.fn(() => ({ running: false, jobs: [] })),
             syncAllAsync: vi.fn().mockResolvedValue({ totalParsed: 1, newlyAdded: 1, updated: 0, skipped: 0 }),
+            runAgentIndexJob: vi.fn().mockResolvedValue({
+                success: true,
+                prompts: { processed: 0, indexed: 0, skipped: 0, failed: 0, batches: 1, lastCursor: null, hasMore: false },
+                articles: { processed: 0, indexed: 0, skipped: 0, failed: 0 },
+            }),
         };
 
         vi.doMock('@/lib/jobs/scheduler', () => {
@@ -136,6 +142,13 @@ describe('server entrypoint lazy imports', () => {
             };
         });
 
+        vi.doMock('@/lib/jobs/agent-index-job', () => {
+            state.agentIndexImported += 1;
+            return {
+                runAgentIndexJob: state.runAgentIndexJob,
+            };
+        });
+
         process.env.KNOWLEDGE_ADMIN_TOKEN = 'unit-test-token';
         const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
         vi.stubGlobal('fetch', fetchMock);
@@ -144,12 +157,14 @@ describe('server entrypoint lazy imports', () => {
 
         expect(state.schedulerImported).toBe(0);
         expect(state.readmeImported).toBe(0);
+        expect(state.agentIndexImported).toBe(0);
 
         const getResponse = await route.GET();
         await getResponse.json();
 
         expect(state.schedulerImported).toBe(1);
         expect(state.readmeImported).toBe(0);
+        expect(state.agentIndexImported).toBe(0);
 
         const postResponse = await route.POST(new Request('http://localhost:5046/api/jobs?action=trigger-prompt-sync', {
             method: 'POST',
@@ -160,6 +175,7 @@ describe('server entrypoint lazy imports', () => {
         await postResponse.json();
 
         expect(state.readmeImported).toBe(1);
+        expect(state.agentIndexImported).toBe(0);
         expect(fetchMock).toHaveBeenCalledWith(
             'http://localhost:5046/api/revalidate/content',
             expect.objectContaining({
@@ -167,6 +183,17 @@ describe('server entrypoint lazy imports', () => {
                 body: JSON.stringify({ type: 'prompt', action: 'sync' }),
             })
         );
+
+        const agentIndexResponse = await route.POST(new Request('http://localhost:5046/api/jobs?action=trigger-agent-index', {
+            method: 'POST',
+            headers: {
+                'x-admin-token': 'unit-test-token',
+            },
+        }) as never);
+        await agentIndexResponse.json();
+
+        expect(state.agentIndexImported).toBe(1);
+        expect(state.runAgentIndexJob).toHaveBeenCalledTimes(1);
     });
 
     it('does not import prompt data services until the prompts page is rendered', async () => {

@@ -1,8 +1,9 @@
 export function buildContentSecurityPolicy(isDev: boolean): string {
     const cloudflareAnalyticsScript = 'https://static.cloudflareinsights.com';
+    const busuanziScript = 'https://cdn.busuanzi.cc';
     const scriptSrc = isDev
-        ? `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${cloudflareAnalyticsScript}`
-        : `script-src 'self' 'unsafe-inline' ${cloudflareAnalyticsScript}`;
+        ? `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${cloudflareAnalyticsScript} ${busuanziScript}`
+        : `script-src 'self' 'unsafe-inline' ${cloudflareAnalyticsScript} ${busuanziScript}`;
 
     const connectSrc = isDev
         ? "connect-src 'self' https: http: ws: wss:"

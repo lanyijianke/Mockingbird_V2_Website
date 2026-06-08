@@ -15,6 +15,13 @@ import type { PromptImportRecord, PromptSourceConfig } from './types';
 
 interface ExistingPromptRecord {
     Id: number;
+    Title?: string | null;
+    RawTitle?: string | null;
+    Description?: string | null;
+    Content?: string | null;
+    Category?: string | null;
+    Author?: string | null;
+    SourceUrl?: string | null;
     CoverImageUrl: string | null;
     VideoPreviewUrl: string | null;
     CardPreviewVideoUrl: string | null;
@@ -27,6 +34,11 @@ interface ResolvedPromptMedia {
     videoPreviewUrl: string | null;
     cardPreviewVideoUrl: string | null;
     imagesJson: string | null;
+}
+
+interface PromptUpsertResult {
+    status: 'inserted' | 'updated' | 'skipped';
+    id?: number;
 }
 
 function mergeReport(target: PipelineReport, current: PipelineReport): void {
@@ -123,7 +135,7 @@ async function resolveRecordMedia(
 async function findExistingRecord(record: PromptImportRecord): Promise<ExistingPromptRecord | null> {
     if (record.sourceUrl) {
         const existing = await queryOne<ExistingPromptRecord>(
-            'SELECT Id, CoverImageUrl, VideoPreviewUrl, CardPreviewVideoUrl, ImagesJson, CopyCount FROM Prompts WHERE SourceUrl = ?',
+            'SELECT Id, Title, RawTitle, Description, Content, Category, Author, SourceUrl, CoverImageUrl, VideoPreviewUrl, CardPreviewVideoUrl, ImagesJson, CopyCount FROM Prompts WHERE SourceUrl = ?',
             [record.sourceUrl]
         );
         if (existing) return existing;
@@ -131,7 +143,7 @@ async function findExistingRecord(record: PromptImportRecord): Promise<ExistingP
 
     if (record.rawTitle || record.title) {
         return queryOne<ExistingPromptRecord>(
-            'SELECT Id, CoverImageUrl, VideoPreviewUrl, CardPreviewVideoUrl, ImagesJson, CopyCount FROM Prompts WHERE RawTitle = ?',
+            'SELECT Id, Title, RawTitle, Description, Content, Category, Author, SourceUrl, CoverImageUrl, VideoPreviewUrl, CardPreviewVideoUrl, ImagesJson, CopyCount FROM Prompts WHERE RawTitle = ?',
             [record.rawTitle || record.title]
         );
     }
@@ -139,13 +151,29 @@ async function findExistingRecord(record: PromptImportRecord): Promise<ExistingP
     return null;
 }
 
+function pushUpdateIfChanged(
+    updates: string[],
+    updateArgs: Array<string | number | null>,
+    existing: ExistingPromptRecord,
+    field: keyof ExistingPromptRecord,
+    column: string,
+    nextValue: string | null
+): void {
+    if (!Object.prototype.hasOwnProperty.call(existing, field)) return;
+    const currentValue = existing[field] == null ? null : String(existing[field]);
+    if (currentValue !== nextValue) {
+        updates.push(`${column} = ?`);
+        updateArgs.push(nextValue);
+    }
+}
+
 async function upsertPromptRecord(
     source: PromptSourceConfig,
     record: PromptImportRecord,
     mediaDir: string
-): Promise<'inserted' | 'updated' | 'skipped'> {
+): Promise<PromptUpsertResult> {
     if (!record.title || !record.content || record.content.length < 5) {
-        return 'skipped';
+        return { status: 'skipped' };
     }
 
     const existing = await findExistingRecord(record);
@@ -154,6 +182,14 @@ async function upsertPromptRecord(
     if (existing) {
         const updates: string[] = [];
         const updateArgs: Array<string | number | null> = [];
+
+        pushUpdateIfChanged(updates, updateArgs, existing, 'Title', 'Title', record.title);
+        pushUpdateIfChanged(updates, updateArgs, existing, 'RawTitle', 'RawTitle', record.rawTitle || record.title);
+        pushUpdateIfChanged(updates, updateArgs, existing, 'Description', 'Description', record.description || '');
+        pushUpdateIfChanged(updates, updateArgs, existing, 'Content', 'Content', record.content);
+        pushUpdateIfChanged(updates, updateArgs, existing, 'Category', 'Category', record.category || source.defaultCategory);
+        pushUpdateIfChanged(updates, updateArgs, existing, 'Author', 'Author', record.author || null);
+        pushUpdateIfChanged(updates, updateArgs, existing, 'SourceUrl', 'SourceUrl', record.sourceUrl || null);
 
         if (!existing.CoverImageUrl && media.coverImageUrl) {
             updates.push('CoverImageUrl = ?');
@@ -176,14 +212,14 @@ async function upsertPromptRecord(
             updateArgs.push(getGeneratedCopyCount(source, record, existing.Id));
         }
 
-        if (updates.length === 0) return 'skipped';
+        if (updates.length === 0) return { status: 'skipped', id: existing.Id };
 
         updates.push('UpdatedAt = NOW()');
         await execute(`UPDATE Prompts SET ${updates.join(', ')} WHERE Id = ?`, [...updateArgs, existing.Id]);
-        return 'updated';
+        return { status: 'updated', id: existing.Id };
     }
 
-    await execute(
+    const result = await execute(
         `INSERT INTO Prompts (Title, RawTitle, Description, Content, Category, Source, Author, SourceUrl, CoverImageUrl, VideoPreviewUrl, CardPreviewVideoUrl, ImagesJson, CopyCount, IsActive, CreatedAt)
          VALUES (?, ?, ?, ?, ?, 'github', ?, ?, ?, ?, ?, ?, ?, 1, NOW())`,
         [
@@ -201,7 +237,7 @@ async function upsertPromptRecord(
             getGeneratedCopyCount(source, record),
         ]
     );
-    return 'inserted';
+    return { status: 'inserted', id: result.insertId || undefined };
 }
 
 export async function syncPromptSourceRecords(
@@ -217,9 +253,9 @@ export async function syncPromptSourceRecords(
                 upsertPromptRecord(source, record, mediaDir)
             ));
 
-            if (result === 'inserted') report.newlyAdded++;
-            if (result === 'updated') report.updated++;
-            if (result === 'skipped') report.skipped++;
+            if (result.status === 'inserted') report.newlyAdded++;
+            if (result.status === 'updated') report.updated++;
+            if (result.status === 'skipped') report.skipped++;
         } catch (err) {
             logger.error('PromptSourceSync', `入库失败: ${record.title}`, err);
         }

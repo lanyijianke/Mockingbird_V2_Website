@@ -32,7 +32,9 @@ describe('root layout navigation', () => {
         expect(navLeftMatch?.[1]).toContain('href="/about"');
         expect(navRightMatch?.[1]).toContain('href="/ai/articles"');
         expect(navRightMatch?.[1]).toContain('href="/ai/prompts"');
+        expect(navRightMatch?.[1]).not.toContain('href="/ai/skill"');
         expect(navRightMatch?.[1]).toContain('提示词');
+        expect(navRightMatch?.[1]).not.toContain('>Skill<');
         expect(navRightMatch?.[1]).not.toContain('AI文章');
         expect(navRightMatch?.[1]).not.toContain('AI 提示词');
         expect(navRightMatch?.[1]).not.toContain('href="/about"');
@@ -44,6 +46,7 @@ describe('root layout navigation', () => {
         expect(html).toContain('首页');
         expect(html).toContain('文章');
         expect(html).toContain('提示词');
+        expect(html).not.toContain('href="/ai/skill"');
         expect(html).toContain('热榜');
         expect(html).toContain('theme-toggle');
         expect(html).not.toContain('学社');

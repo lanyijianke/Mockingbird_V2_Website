@@ -15,8 +15,8 @@ const INTERNAL_LINKS = [
         description: '把技能热度和提示词模板结合起来，快速验证是否有真实工作流价值。',
     },
     {
-        href: '/ai/articles?category=tech-practice',
-        title: '技术实战文章',
+        href: '/ai/articles?category=engineering',
+        title: '工程架构文章',
         description: '从技能与工具热度回流到系统化文章，补齐方法论和案例。',
     },
 ];

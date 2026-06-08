@@ -38,14 +38,14 @@ describe('local article directory', () => {
         await fs.writeFile(path.join(aiRoot, 'manifest.json'), JSON.stringify({
             site: 'ai',
             source: 'web-article',
-            categories: [{ code: 'ai-tech', name: 'AI技术' }],
+            categories: [{ code: 'engineering', name: '工程架构' }],
             articles: [
                 {
                     id: 'ai-1',
                     slug: 'prompt-caching',
                     title: 'Prompt Caching',
                     summary: 'AI summary',
-                    category: 'ai-tech',
+                    category: 'engineering',
                     author: '@_avichawla',
                     originalUrl: 'https://x.com/example/1',
                     sourcePlatform: 'x',
@@ -61,7 +61,7 @@ describe('local article directory', () => {
                     slug: 'draft-only',
                     title: 'Draft only',
                     summary: 'draft',
-                    category: 'ai-tech',
+                    category: 'engineering',
                     author: '@draft',
                     originalUrl: 'https://x.com/example/draft',
                     sourcePlatform: 'x',
@@ -121,7 +121,7 @@ describe('local article directory', () => {
             'ai:prompt-caching',
         ]);
 
-        expect(directory.categoriesBySite.ai).toEqual([{ code: 'ai-tech', name: 'AI技术' }]);
+        expect(directory.categoriesBySite.ai).toEqual([{ code: 'engineering', name: '工程架构' }]);
         expect(directory.categoriesBySite.finance).toEqual([{ code: 'macro', name: '宏观' }]);
         expect(directory.entries[0].coverUrl).toBe('/api/article-assets/finance/fed-notes/images/cover.jpg');
     });
@@ -139,7 +139,7 @@ describe('local article directory', () => {
                     slug: 'build-astonishing-ui-with-codex',
                     title: '如何用 Codex 构建惊艳的 UI',
                     summary: 'summary',
-                    category: 'ai-tech',
+                    category: 'engineering',
                     author: '@emanueledpt',
                     originalUrl: 'https://x.com/emanueledpt/status/2035402224260550921',
                     sourcePlatform: 'x',
@@ -164,7 +164,7 @@ describe('local article directory', () => {
 
         const directory = await fetchAggregatedArticleDirectory({ forceRefresh: true });
 
-        expect(directory.categoriesBySite.ai).toEqual([{ code: 'ai-tech', name: 'AI技术' }]);
+        expect(directory.categoriesBySite.ai).toEqual([{ code: 'engineering', name: '工程架构' }]);
         expect(directory.entries[0].coverUrl).toBe('/api/article-assets/ai/build-astonishing-ui-with-codex/images/cover.jpg');
     });
 
@@ -181,7 +181,7 @@ describe('local article directory', () => {
                     slug: 'no-cover',
                     title: 'No Cover',
                     summary: 'summary',
-                    category: 'ai-tech',
+                    category: 'engineering',
                     author: '@author',
                     originalUrl: 'https://example.com/no-cover',
                     sourcePlatform: 'website',
@@ -226,7 +226,7 @@ describe('local article directory', () => {
                     slug: 'prompt-caching',
                     title: 'Prompt Caching',
                     summary: 'summary',
-                    category: 'ai-tech',
+                    category: 'engineering',
                     author: '@author',
                     originalUrl: 'https://example.com/prompt-caching',
                     sourcePlatform: 'website',
@@ -269,7 +269,7 @@ describe('local article directory', () => {
                     slug: 'prompt-caching',
                     title: 'Prompt Caching',
                     summary: 'summary',
-                    category: 'ai-tech',
+                    category: 'engineering',
                     author: '@author',
                     originalUrl: 'https://example.com/prompt-caching',
                     sourcePlatform: 'website',

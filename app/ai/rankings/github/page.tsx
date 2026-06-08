@@ -20,8 +20,8 @@ const INTERNAL_LINKS = [
         description: '继续结合多模态提示词模板，验证这些热门项目的实际可用场景。',
     },
     {
-        href: '/ai/articles?category=tech-practice',
-        title: '技术实战文章',
+        href: '/ai/articles?category=engineering',
+        title: '工程架构文章',
         description: '把排行榜信号和文章中的方法论、案例拆解放到一起阅读。',
     },
 ];

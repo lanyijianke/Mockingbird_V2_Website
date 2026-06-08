@@ -326,6 +326,20 @@ html[data-theme='light'] .theme-logo-light {
   line-height: 1.7;
 }
 
+.site-footer-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.85rem;
+  margin-top: 0.9rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.site-footer-stats span span {
+  color: var(--text-main);
+  font-variant-numeric: tabular-nums;
+}
+
 .site-footer-nav {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
