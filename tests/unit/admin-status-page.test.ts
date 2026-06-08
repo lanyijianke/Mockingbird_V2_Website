@@ -98,6 +98,49 @@ vi.mock('@/lib/monitoring/status-service', () => ({
             },
         ],
         logReadError: null,
+        indexStatus: {
+            site: 'ai',
+            available: true,
+            prompts: { sourceTotal: 7649, indexed: 7659, pending: -10 },
+            articles: { sourceTotal: 17, indexed: 16, pending: 1 },
+            embeddings: {
+                semanticEnabled: false,
+                totalChunks: 12000,
+                embeddedChunks: 11900,
+                promptDocumentsWithEmbeddings: null,
+                articleDocumentsWithEmbeddings: null,
+                promptDocumentsPending: null,
+                articleDocumentsPending: null,
+            },
+            vectors: {
+                promptPoints: null,
+                articlePoints: null,
+                totalPoints: null,
+            },
+        },
+    })),
+}));
+
+vi.mock('@/lib/monitoring/coverage-service', () => ({
+    loadCoverageSnapshot: vi.fn(async () => ({
+        site: 'ai',
+        available: true,
+        prompts: { sourceTotal: 7659, indexed: 7600, pending: 59 },
+        articles: { sourceTotal: 17, indexed: 16, pending: 1 },
+        embeddings: {
+            semanticEnabled: false,
+            totalChunks: 12000,
+            embeddedChunks: 11900,
+            promptDocumentsWithEmbeddings: null,
+            articleDocumentsWithEmbeddings: null,
+            promptDocumentsPending: null,
+            articleDocumentsPending: null,
+        },
+        vectors: {
+            promptPoints: null,
+            articlePoints: null,
+            totalPoints: null,
+        },
     })),
 }));
 
@@ -163,6 +206,23 @@ describe('admin status page', () => {
         expect(html).toContain('本次启动后尚无记录');
         expect(html).toContain('最近错误');
         expect(html).toContain('服务健康');
+        expect(html).toContain('索引数据状态');
+        expect(html).toContain('提示词源数据');
+        expect(html).toContain('已入搜索索引');
+        expect(html).toContain('多出 10');
+        expect(html).not.toContain('待补 -10');
+        expect(html).toContain('文章源数据');
+        expect(html).toContain('待补 1');
+        expect(html).toContain('Embedding');
+        expect(html).toContain('11,900 / 12,000 chunks');
+        expect(html).toContain('语义搜索关闭');
+        expect(html).toContain('提示词文档待补');
+        expect(html).toContain('向量库');
+        expect(html).toContain('随语义搜索关闭');
+        expect(html).toContain('未检查');
+        expect(html).not.toContain('未读取');
+        expect(html).not.toContain('未启用');
+        expect(html).not.toContain('n/a');
         expect(html).not.toContain('索引闭环');
         expect(html).not.toContain('coverage gap');
         expect(html).not.toContain('UNKNOWN');

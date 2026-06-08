@@ -39,6 +39,26 @@ describe('status service types', () => {
         });
         expect(payload.jobs).toEqual([]);
         expect(payload.logs).toEqual([]);
+        expect(payload.indexStatus).toEqual({
+            site: 'ai',
+            available: false,
+            prompts: { sourceTotal: null, indexed: null, pending: null },
+            articles: { sourceTotal: null, indexed: null, pending: null },
+            embeddings: {
+                semanticEnabled: false,
+                totalChunks: null,
+                embeddedChunks: null,
+                promptDocumentsWithEmbeddings: null,
+                articleDocumentsWithEmbeddings: null,
+                promptDocumentsPending: null,
+                articleDocumentsPending: null,
+            },
+            vectors: {
+                promptPoints: null,
+                articlePoints: null,
+                totalPoints: null,
+            },
+        });
         expect(payload).not.toHaveProperty('coverage');
     });
 });
@@ -72,6 +92,26 @@ describe('getMonitoringStatus', () => {
                 version: '0.1.0',
                 database: { status: 'ok', prompts: 7659 },
                 articleSources: { status: 'ok', articles: 17 },
+            },
+            indexStatus: {
+                site: 'ai',
+                available: true,
+                prompts: { sourceTotal: 7659, indexed: 7600, pending: 59 },
+                articles: { sourceTotal: 17, indexed: 16, pending: 1 },
+                embeddings: {
+                    semanticEnabled: true,
+                    totalChunks: 12000,
+                    embeddedChunks: 11900,
+                    promptDocumentsWithEmbeddings: 7590,
+                    articleDocumentsWithEmbeddings: 16,
+                    promptDocumentsPending: 10,
+                    articleDocumentsPending: 0,
+                },
+                vectors: {
+                    promptPoints: 7590,
+                    articlePoints: 16,
+                    totalPoints: 7606,
+                },
             },
         });
 
@@ -107,6 +147,13 @@ describe('getMonitoringStatus', () => {
         expect(agentIndex?.locked).toBe(true);
         expect(agentIndex?.latestRun.status).toBe('running');
         expect(agentIndex?.today.warningRuns).toBe(1);
+        expect(payload.indexStatus).toMatchObject({
+            available: true,
+            prompts: { sourceTotal: 7659, indexed: 7600, pending: 59 },
+            articles: { sourceTotal: 17, indexed: 16, pending: 1 },
+            embeddings: { semanticEnabled: true, embeddedChunks: 11900, promptDocumentsPending: 10 },
+            vectors: { totalPoints: 7606 },
+        });
         expect(payload.logs).toHaveLength(1);
         expect(payload).not.toHaveProperty('coverage');
     });

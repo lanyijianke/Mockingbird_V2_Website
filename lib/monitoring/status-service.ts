@@ -1,6 +1,7 @@
 import {
     createEmptyMonitoringPayload,
     createMonitoringJobSnapshot,
+    type MonitoringIndexStatus,
     type MonitoringJobSnapshot,
     type MonitoringLogEntry,
     type MonitoringPayload,
@@ -242,6 +243,7 @@ async function loadTodayJobRows(): Promise<DailyJobRow[]> {
 
 export async function getMonitoringStatus(input: {
     health: HealthSnapshotInput;
+    indexStatus?: MonitoringIndexStatus;
 }): Promise<MonitoringPayload> {
     const payload = createEmptyMonitoringPayload();
     const siteConfig = getSiteBrandConfig();
@@ -254,6 +256,9 @@ export async function getMonitoringStatus(input: {
         databaseStatus: input.health.database.status,
         articleSourceStatus: input.health.articleSources.status,
     };
+    if (input.indexStatus) {
+        payload.indexStatus = input.indexStatus;
+    }
 
     const jobMap = applySchedulerState(payload);
 

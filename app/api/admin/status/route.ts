@@ -9,12 +9,16 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
     }
 
-    const [{ getMonitoringStatus }, { getHealthSnapshot }] = await Promise.all([
+    const [{ getMonitoringStatus }, { getHealthSnapshot }, { loadCoverageSnapshot }] = await Promise.all([
         import('@/lib/monitoring/status-service'),
         import('@/app/api/health/route'),
+        import('@/lib/monitoring/coverage-service'),
     ]);
 
-    const health = await getHealthSnapshot();
-    const data = await getMonitoringStatus({ health });
+    const [health, indexStatus] = await Promise.all([
+        getHealthSnapshot(),
+        loadCoverageSnapshot('ai'),
+    ]);
+    const data = await getMonitoringStatus({ health, indexStatus });
     return NextResponse.json({ success: true, data });
 }

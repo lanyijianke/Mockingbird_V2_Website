@@ -2,7 +2,9 @@ import { cookies } from 'next/headers';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { getHealthSnapshot } from '@/app/api/health/route';
+import { loadCoverageSnapshot } from '@/lib/monitoring/coverage-service';
 import { getMonitoringStatus } from '@/lib/monitoring/status-service';
+import type { MonitoringIndexStatus } from '@/lib/monitoring/status-types';
 import { isValidAdminToken } from '@/lib/utils/admin-auth';
 
 function isLocalDevelopmentHost(host: string): boolean {
@@ -101,9 +103,31 @@ function renderMetric(label: string, value: string | number | null | undefined) 
     return (
         <div className="admin-status__metric" key={label}>
             <dt>{label}</dt>
-            <dd>{value ?? 'n/a'}</dd>
+            <dd>{value ?? '未读取'}</dd>
         </div>
     );
+}
+
+function formatCount(value: number | null): string {
+    return value === null ? '未检查' : value.toLocaleString('zh-CN');
+}
+
+function formatPending(value: number | null): string {
+    if (value === null) return '待补 n/a';
+    if (value < 0) return `多出 ${Math.abs(value).toLocaleString('zh-CN')}`;
+    return `待补 ${value.toLocaleString('zh-CN')}`;
+}
+
+function renderIndexStatusLabel(value: number | null): string {
+    if (value === null) return '无法读取';
+    if (value < 0) return '索引多出';
+    return value === 0 ? '完整' : '有待补';
+}
+
+function renderChunkCoverage(indexStatus: MonitoringIndexStatus): string {
+    const embedded = formatCount(indexStatus.embeddings.embeddedChunks);
+    const total = formatCount(indexStatus.embeddings.totalChunks);
+    return `${embedded} / ${total} chunks`;
 }
 
 export default async function AdminStatusPage() {
@@ -116,8 +140,11 @@ export default async function AdminStatusPage() {
         notFound();
     }
 
-    const health = await getHealthSnapshot();
-    const status = await getMonitoringStatus({ health });
+    const [health, indexStatus] = await Promise.all([
+        getHealthSnapshot(),
+        loadCoverageSnapshot('ai'),
+    ]);
+    const status = await getMonitoringStatus({ health, indexStatus });
     const hasJobFailures = status.jobs.some((job) => job.latestRun.status === 'error' || job.today.errorRuns > 0);
     const topState = !status.scheduler.running ? 'error' : hasJobFailures ? 'warning' : 'success';
     const topLabel = !status.scheduler.running ? '定时器未启动' : hasJobFailures ? '有 job 需要关注' : '定时器运行中';
@@ -196,6 +223,71 @@ export default async function AdminStatusPage() {
                         </tbody>
                     </table>
                 </div>
+            </section>
+
+            <section className="admin-status__section">
+                <div className="admin-status__section-heading">
+                    <h2>索引数据状态</h2>
+                    <p>看搜索索引和向量数据是否落后，和 Job 执行状态分开排查。</p>
+                </div>
+                {!status.indexStatus.available ? (
+                    <p className="admin-status__empty">无法读取索引数据状态，请先检查数据库和向量库环境变量。</p>
+                ) : (
+                    <div className="admin-status__index-grid">
+                        <article className="admin-status__index-card">
+                            <div className="admin-status__index-card-head">
+                                <h3>提示词源数据</h3>
+                                <span className={`admin-status__pill is-${status.indexStatus.prompts.pending === 0 ? 'success' : 'warning'}`}>
+                                    {renderIndexStatusLabel(status.indexStatus.prompts.pending)}
+                                </span>
+                            </div>
+                            <dl>
+                                {renderMetric('源数据', formatCount(status.indexStatus.prompts.sourceTotal))}
+                                {renderMetric('已入搜索索引', formatCount(status.indexStatus.prompts.indexed))}
+                                {renderMetric('待补', formatPending(status.indexStatus.prompts.pending))}
+                            </dl>
+                        </article>
+                        <article className="admin-status__index-card">
+                            <div className="admin-status__index-card-head">
+                                <h3>文章源数据</h3>
+                                <span className={`admin-status__pill is-${status.indexStatus.articles.pending === 0 ? 'success' : 'warning'}`}>
+                                    {renderIndexStatusLabel(status.indexStatus.articles.pending)}
+                                </span>
+                            </div>
+                            <dl>
+                                {renderMetric('源数据', formatCount(status.indexStatus.articles.sourceTotal))}
+                                {renderMetric('已入搜索索引', formatCount(status.indexStatus.articles.indexed))}
+                                {renderMetric('待补', formatPending(status.indexStatus.articles.pending))}
+                            </dl>
+                        </article>
+                        <article className="admin-status__index-card">
+                            <div className="admin-status__index-card-head">
+                                <h3>Embedding</h3>
+                                <span className={`admin-status__pill is-${status.indexStatus.embeddings.semanticEnabled ? 'success' : 'none'}`}>
+                                    {status.indexStatus.embeddings.semanticEnabled ? '语义搜索已开启' : '语义搜索关闭'}
+                                </span>
+                            </div>
+                            <dl>
+                                {renderMetric('Chunk 嵌入', renderChunkCoverage(status.indexStatus))}
+                                {renderMetric('提示词文档待补', status.indexStatus.embeddings.semanticEnabled ? formatCount(status.indexStatus.embeddings.promptDocumentsPending) : '未检查')}
+                                {renderMetric('文章文档待补', status.indexStatus.embeddings.semanticEnabled ? formatCount(status.indexStatus.embeddings.articleDocumentsPending) : '未检查')}
+                            </dl>
+                        </article>
+                        <article className="admin-status__index-card">
+                            <div className="admin-status__index-card-head">
+                                <h3>向量库</h3>
+                                <span className={`admin-status__pill is-${status.indexStatus.vectors.totalPoints === null ? 'none' : 'success'}`}>
+                                    {status.indexStatus.embeddings.semanticEnabled ? '已检查' : '随语义搜索关闭'}
+                                </span>
+                            </div>
+                            <dl>
+                                {renderMetric('提示词 points', formatCount(status.indexStatus.vectors.promptPoints))}
+                                {renderMetric('文章 points', formatCount(status.indexStatus.vectors.articlePoints))}
+                                {renderMetric('总 points', formatCount(status.indexStatus.vectors.totalPoints))}
+                            </dl>
+                        </article>
+                    </div>
+                )}
             </section>
 
             <section className="admin-status__two-column">

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockGetMonitoringStatus = vi.fn();
 const mockGetHealthSnapshot = vi.fn();
+const mockLoadCoverageSnapshot = vi.fn();
 
 vi.mock('@/lib/monitoring/status-service', () => ({
     getMonitoringStatus: mockGetMonitoringStatus,
@@ -10,6 +11,10 @@ vi.mock('@/lib/monitoring/status-service', () => ({
 
 vi.mock('@/app/api/health/route', () => ({
     getHealthSnapshot: mockGetHealthSnapshot,
+}));
+
+vi.mock('@/lib/monitoring/coverage-service', () => ({
+    loadCoverageSnapshot: mockLoadCoverageSnapshot,
 }));
 
 describe('GET /api/admin/status', () => {
@@ -25,6 +30,26 @@ describe('GET /api/admin/status', () => {
             articleSources: { status: 'ok', articles: 10 },
             scheduler: { running: true, jobs: [] },
             service: 'Mockingbird Knowledge',
+        });
+        mockLoadCoverageSnapshot.mockResolvedValue({
+            site: 'ai',
+            available: true,
+            prompts: { sourceTotal: 100, indexed: 98, pending: 2 },
+            articles: { sourceTotal: 10, indexed: 10, pending: 0 },
+            embeddings: {
+                semanticEnabled: true,
+                totalChunks: 200,
+                embeddedChunks: 190,
+                promptDocumentsWithEmbeddings: 98,
+                articleDocumentsWithEmbeddings: 10,
+                promptDocumentsPending: 0,
+                articleDocumentsPending: 0,
+            },
+            vectors: {
+                promptPoints: 98,
+                articlePoints: 10,
+                totalPoints: 108,
+            },
         });
     });
 
@@ -42,8 +67,13 @@ describe('GET /api/admin/status', () => {
         }));
 
         expect(response.status).toBe(200);
+        expect(mockLoadCoverageSnapshot).toHaveBeenCalledWith('ai');
         expect(mockGetMonitoringStatus).toHaveBeenCalledWith({
             health: expect.objectContaining({ status: 'healthy' }),
+            indexStatus: expect.objectContaining({
+                available: true,
+                prompts: { sourceTotal: 100, indexed: 98, pending: 2 },
+            }),
         });
         expect(await response.json()).toEqual({
             success: true,

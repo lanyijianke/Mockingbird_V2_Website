@@ -36,6 +36,35 @@ export interface MonitoringLogEntry {
     createdAt: string;
 }
 
+export interface MonitoringIndexStatus {
+    site: string;
+    available: boolean;
+    prompts: {
+        sourceTotal: number | null;
+        indexed: number | null;
+        pending: number | null;
+    };
+    articles: {
+        sourceTotal: number | null;
+        indexed: number | null;
+        pending: number | null;
+    };
+    embeddings: {
+        semanticEnabled: boolean;
+        totalChunks: number | null;
+        embeddedChunks: number | null;
+        promptDocumentsWithEmbeddings: number | null;
+        articleDocumentsWithEmbeddings: number | null;
+        promptDocumentsPending: number | null;
+        articleDocumentsPending: number | null;
+    };
+    vectors: {
+        promptPoints: number | null;
+        articlePoints: number | null;
+        totalPoints: number | null;
+    };
+}
+
 export interface MonitoringPayload {
     service: {
         status: string;
@@ -54,6 +83,7 @@ export interface MonitoringPayload {
     jobs: MonitoringJobSnapshot[];
     logs: MonitoringLogEntry[];
     logReadError: string | null;
+    indexStatus: MonitoringIndexStatus;
 }
 
 export function createEmptyRunSnapshot(): MonitoringRunSnapshot {
@@ -95,6 +125,37 @@ export function createMonitoringJobSnapshot(input: {
     };
 }
 
+export function createEmptyIndexStatus(site: string = 'ai'): MonitoringIndexStatus {
+    return {
+        site,
+        available: false,
+        prompts: {
+            sourceTotal: null,
+            indexed: null,
+            pending: null,
+        },
+        articles: {
+            sourceTotal: null,
+            indexed: null,
+            pending: null,
+        },
+        embeddings: {
+            semanticEnabled: false,
+            totalChunks: null,
+            embeddedChunks: null,
+            promptDocumentsWithEmbeddings: null,
+            articleDocumentsWithEmbeddings: null,
+            promptDocumentsPending: null,
+            articleDocumentsPending: null,
+        },
+        vectors: {
+            promptPoints: null,
+            articlePoints: null,
+            totalPoints: null,
+        },
+    };
+}
+
 export function createEmptyMonitoringPayload(): MonitoringPayload {
     return {
         service: {
@@ -114,5 +175,6 @@ export function createEmptyMonitoringPayload(): MonitoringPayload {
         jobs: [],
         logs: [],
         logReadError: null,
+        indexStatus: createEmptyIndexStatus(),
     };
 }
