@@ -123,8 +123,8 @@ describe('parseCategoryParam', () => {
     });
 
     it('合法分类编码正常返回', () => {
-        const params = new URLSearchParams({ category: 'vibe-coding' });
-        expect(parseCategoryParam(params)).toBe('vibe-coding');
+        const params = new URLSearchParams({ category: 'engineering' });
+        expect(parseCategoryParam(params)).toBe('engineering');
     });
 
     it('纯字母数字合法', () => {

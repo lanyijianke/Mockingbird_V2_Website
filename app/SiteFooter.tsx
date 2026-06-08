@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { getSiteBrandConfig } from '@/lib/site-config';
+import BusuanziStats from './BusuanziStats';
 
 const CONTENT_LINKS = [
   { href: '/ai/articles', label: '文章' },
@@ -51,6 +52,7 @@ export default function SiteFooter() {
           <p className="site-footer-description">
             文章、提示词和工具热榜的长期收藏夹。
           </p>
+          <BusuanziStats />
         </div>
 
         <nav className="site-footer-nav" aria-label="页脚导航">

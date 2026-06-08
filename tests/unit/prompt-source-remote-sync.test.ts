@@ -57,7 +57,7 @@ describe('prompt remote source sync runner', () => {
         });
     });
 
-    it('indexes newly inserted prompts after sync writes the row', async () => {
+    it('does not trigger agent indexing when sync inserts a new prompt row', async () => {
         mockQueryOne.mockResolvedValue(null);
         mockExecute.mockResolvedValue({ affectedRows: 1, insertId: 51 });
 
@@ -81,10 +81,10 @@ describe('prompt remote source sync runner', () => {
         );
 
         expect(report.newlyAdded).toBe(1);
-        expect(mockIndexPrompt).toHaveBeenCalledWith(51);
+        expect(mockIndexPrompt).not.toHaveBeenCalled();
     });
 
-    it('logs prompt indexing failures without failing sync', async () => {
+    it('does not try to index updated prompts inside the source sync pipeline', async () => {
         mockQueryOne.mockResolvedValue({
             Id: 52,
             CoverImageUrl: null,
@@ -95,7 +95,6 @@ describe('prompt remote source sync runner', () => {
         });
         mockDownloadMedia.mockResolvedValue('/tmp/prompt-media/cat.webp');
         mockExecute.mockResolvedValue({ affectedRows: 1, insertId: 0 });
-        mockIndexPrompt.mockRejectedValueOnce(new Error('index unavailable'));
 
         const { syncPromptSourceRecords } = await import('@/lib/pipelines/prompt-sources/remote-sync');
         const report = await syncPromptSourceRecords(
@@ -118,11 +117,11 @@ describe('prompt remote source sync runner', () => {
         );
 
         expect(report.updated).toBe(1);
-        expect(mockIndexPrompt).toHaveBeenCalledWith(52);
-        expect(mockLoggerError).toHaveBeenCalledWith('PromptSourceSync', '提示词索引失败: 52', expect.any(Error));
+        expect(mockIndexPrompt).not.toHaveBeenCalled();
+        expect(mockLoggerError).not.toHaveBeenCalledWith('PromptSourceSync', expect.stringContaining('提示词索引失败'), expect.any(Error));
     });
 
-    it('updates changed core fields for existing prompts and reindexes them', async () => {
+    it('updates changed core fields for existing prompts without reindexing them inline', async () => {
         mockQueryOne.mockResolvedValue({
             Id: 53,
             Title: 'Old title',
@@ -166,7 +165,7 @@ describe('prompt remote source sync runner', () => {
         expect(mockExecute.mock.calls[0][0]).toContain('Title = ?');
         expect(mockExecute.mock.calls[0][0]).toContain('Content = ?');
         expect(mockExecute.mock.calls[0][1]).toEqual(expect.arrayContaining(['New title', 'New content', 'gpt-image-2', 53]));
-        expect(mockIndexPrompt).toHaveBeenCalledWith(53);
+        expect(mockIndexPrompt).not.toHaveBeenCalled();
     });
 
     it('imports normalized records through the existing Prompts table shape', async () => {

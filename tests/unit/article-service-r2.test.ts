@@ -19,7 +19,7 @@ describe('article service backed by R2 sources', () => {
     it('rewrites relative markdown images to the R2 public base URL', async () => {
         const { fetchAggregatedArticleDirectory, fetchArticleMarkdown } = await import('@/lib/articles/article-directory');
         vi.mocked(fetchAggregatedArticleDirectory).mockResolvedValue({
-            categoriesBySite: { ai: [{ code: 'ai-tech', name: 'AI技术' }] },
+            categoriesBySite: { ai: [{ code: 'engineering', name: '工程架构' }] },
             entries: [
                 {
                     id: 'ai-1',
@@ -29,8 +29,8 @@ describe('article service backed by R2 sources', () => {
                     slug: 'prompt-caching',
                     title: 'Prompt Caching',
                     summary: 'summary',
-                    category: 'ai-tech',
-                    categoryName: 'AI技术',
+                    category: 'engineering',
+                    categoryName: '工程架构',
                     author: '@author',
                     originalUrl: 'https://example.com/prompt-caching',
                     sourcePlatform: 'website',

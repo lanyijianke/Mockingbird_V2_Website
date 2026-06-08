@@ -5,12 +5,14 @@ const mockIndexPrompt = vi.fn();
 const mockIndexArticle = vi.fn();
 const mockIndexAllPrompts = vi.fn();
 const mockIndexAllArticles = vi.fn();
+const mockIndexPromptBatch = vi.fn();
 
 vi.mock('@/lib/services/agent-search-indexer', () => ({
     indexPrompt: mockIndexPrompt,
     indexArticle: mockIndexArticle,
     indexAllPrompts: mockIndexAllPrompts,
     indexAllArticles: mockIndexAllArticles,
+    indexPromptBatch: mockIndexPromptBatch,
 }));
 
 describe('Agent index route', () => {
@@ -26,6 +28,14 @@ describe('Agent index route', () => {
         mockIndexArticle.mockResolvedValue({ type: 'article', id: 'agent-workflow', status: 'indexed' });
         mockIndexAllPrompts.mockResolvedValue({ success: true, items: [] });
         mockIndexAllArticles.mockResolvedValue({ success: true, items: [] });
+        mockIndexPromptBatch.mockResolvedValue({
+            success: true,
+            items: [{ type: 'prompt', id: '124', status: 'indexed' }],
+            processed: 1,
+            requestedLimit: 50,
+            nextCursor: 124,
+            hasMore: true,
+        });
     });
 
     afterEach(() => {
@@ -73,6 +83,25 @@ describe('Agent index route', () => {
 
         expect(response.status).toBe(200);
         expect(mockIndexArticle).toHaveBeenCalledWith('agent-workflow', { site: 'ai', force: true });
+    });
+
+    it('indexes a bounded prompt batch with a valid token', async () => {
+        const { POST } = await import('@/app/api/agent/index/route');
+        const response = await POST(new NextRequest('http://localhost:5046/api/agent/index', {
+            method: 'POST',
+            headers: { authorization: 'Bearer secret-token' },
+            body: JSON.stringify({ type: 'prompt-batch', afterId: 123, limit: 50 }),
+        }));
+        const payload = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(payload.data).toMatchObject({
+            processed: 1,
+            requestedLimit: 50,
+            nextCursor: 124,
+            hasMore: true,
+        });
+        expect(mockIndexPromptBatch).toHaveBeenCalledWith({ afterId: 123, limit: 50 });
     });
 
     it('rejects invalid payloads', async () => {

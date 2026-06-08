@@ -3,7 +3,7 @@ import { parsePaginationParams, parseCountParam, parseSearchQuery, parseCategory
 
 export const runtime = 'nodejs';
 
-// GET /api/articles?page=1&pageSize=12&category=vibe-coding&q=search
+// GET /api/articles?page=1&pageSize=12&category=engineering&q=search
 export async function GET(request: NextRequest) {
     const { getTopArticles, getPagedArticles, getAllSlugs } = await import('@/lib/services/article-service');
     const { searchParams } = new URL(request.url);

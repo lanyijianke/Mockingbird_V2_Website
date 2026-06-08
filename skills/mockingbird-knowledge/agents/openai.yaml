@@ -1,0 +1,3 @@
+display_name: Mockingbird Knowledge
+short_description: Search and read public Mockingbird AI prompts and articles as reusable knowledge assets.
+default_prompt: Find relevant Mockingbird prompts or articles for the agent task and cite the public URLs.

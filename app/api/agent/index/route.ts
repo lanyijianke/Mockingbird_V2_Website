@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminHeaders } from '@/lib/utils/admin-auth';
-import { indexAllArticles, indexAllPrompts, indexArticle, indexPrompt } from '@/lib/services/agent-search-indexer';
+import { indexAllArticles, indexAllPrompts, indexArticle, indexPrompt, indexPromptBatch } from '@/lib/services/agent-search-indexer';
 import type { AgentIndexReport, AgentIndexRequest } from '@/lib/services/agent-search-types';
 
 export const runtime = 'nodejs';
@@ -13,6 +13,13 @@ function parseIndexRequest(value: unknown): AgentIndexRequest | null {
     if (!isObject(value)) return null;
     if (value.type === 'prompt' && Number.isInteger(value.id) && Number(value.id) > 0) {
         return { type: 'prompt', id: Number(value.id) };
+    }
+    if (value.type === 'prompt-batch') {
+        const afterId = value.afterId === undefined ? undefined : Number(value.afterId);
+        const limit = value.limit === undefined ? undefined : Number(value.limit);
+        if (afterId !== undefined && (!Number.isInteger(afterId) || afterId < 0)) return null;
+        if (limit !== undefined && (!Number.isInteger(limit) || limit <= 0)) return null;
+        return { type: 'prompt-batch', afterId, limit };
     }
     if (value.type === 'article' && typeof value.slug === 'string' && value.slug.trim()) {
         return { type: 'article', site: typeof value.site === 'string' && value.site.trim() ? value.site.trim() : 'ai', slug: value.slug.trim() };
@@ -27,6 +34,9 @@ async function runIndexRequest(request: AgentIndexRequest): Promise<AgentIndexRe
     if (request.type === 'prompt') {
         const item = await indexPrompt(request.id);
         return { success: item.status !== 'failed', items: [item] };
+    }
+    if (request.type === 'prompt-batch') {
+        return indexPromptBatch({ afterId: request.afterId, limit: request.limit });
     }
     if (request.type === 'article') {
         const item = await indexArticle(request.slug, { site: request.site || 'ai', force: true });

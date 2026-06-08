@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { getArticleListPath } from '@/lib/articles/article-route-paths';
+import { isSkillMarketingPageEnabled } from '@/lib/agent-search/skill-page-config';
 import ThemeToggle from '@/app/ThemeToggle';
 
 const NAV_BRAND_NAME = '知更鸟 AI 知识库';
@@ -14,6 +15,7 @@ export default function SiteNav() {
   const isRootHome = pathname === '/';
   const isAbout = pathname.startsWith('/about');
   const isAi = isRootHome || isAbout || pathname.startsWith('/ai');
+  const skillMarketingPageEnabled = isSkillMarketingPageEnabled();
 
   const brandHref = '/';
 
@@ -62,6 +64,7 @@ export default function SiteNav() {
           <>
             <Link href={getArticleListPath('ai')} className="nav-link">文章</Link>
             <Link href="/ai/prompts" className="nav-link">提示词</Link>
+            {skillMarketingPageEnabled && <Link href="/ai/skill" className="nav-link">Skill</Link>}
 
             {/* Mobile: plain link */}
             <Link href="/ai/rankings/github" className="nav-link nav-mobile-only">

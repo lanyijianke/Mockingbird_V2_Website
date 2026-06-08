@@ -14,7 +14,7 @@ In scope:
 - Agent-facing read APIs for search, prompt detail, and article detail.
 - Protected indexing APIs and jobs that refresh the index after prompt sync and article publish.
 - A small update to the internal `console-knowledge-handoff` skill so article publishing triggers and verifies indexing.
-- A new external read-only `mockingbird-knowledge` skill with scripts that call the Agent APIs.
+- A new external read-only `mockingbird-agent-assets` skill with scripts that call the Agent APIs.
 - R2 pressure control through indexing, caching, result limits, and media access rules.
 
 Out of scope:
@@ -276,12 +276,12 @@ This keeps publishing and search freshness related but not transactionally coupl
 
 ## External Skill
 
-Create a separate read-only skill named `mockingbird-knowledge`.
+Create a separate read-only skill named `mockingbird-agent-assets`.
 
 Suggested structure:
 
 ```text
-mockingbird-knowledge/
+mockingbird-agent-assets/
 ├── SKILL.md
 ├── agents/
 │   └── openai.yaml
@@ -312,7 +312,7 @@ The external skill must not:
 Scripts should accept a base URL from environment, defaulting to the production site:
 
 ```text
-MOCKINGBIRD_KNOWLEDGE_BASE_URL=https://zgnknowledge.online
+MOCKINGBIRD_AGENT_ASSETS_BASE_URL=https://zgnknowledge.online
 ```
 
 Example script use:
@@ -381,7 +381,7 @@ Operational verification:
 4. Hook article indexing into protected index API.
 5. Update `console-knowledge-handoff` publish flow to trigger and verify article indexing.
 6. Add embeddings and hybrid reranking.
-7. Create the external `mockingbird-knowledge` read-only skill.
+7. Create the external `mockingbird-agent-assets` read-only skill.
 8. Add monitoring for index freshness, indexing failures, and R2 reads during indexing.
 
 The first production release can ship with keyword search and indexing hooks before embeddings are enabled. The API shape should stay stable so the external skill does not need to change when semantic search is added.

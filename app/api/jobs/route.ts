@@ -31,6 +31,7 @@ async function requestContentRevalidation(body: unknown): Promise<void> {
  * POST /api/jobs?action=start — 启动调度器
  * POST /api/jobs?action=stop — 停止调度器
  * POST /api/jobs?action=trigger-prompt-sync — 立即执行一次提示词源同步
+ * POST /api/jobs?action=trigger-agent-index — 立即执行一次 Agent 索引/向量同步
  */
 export async function GET() {
     const { getSchedulerStatus } = await import('@/lib/jobs/scheduler');
@@ -71,7 +72,15 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ message: '提示词同步已执行', report });
         }
 
+        case 'trigger-agent-index': {
+            const { runAgentIndexJob } = await import('@/lib/jobs/agent-index-job');
+            console.log('[API] 手动触发 Agent 索引同步...');
+            const report = await runAgentIndexJob();
+            console.log('[API] Agent 索引同步完成:', report);
+            return NextResponse.json({ message: 'Agent 索引同步已执行', report });
+        }
+
         default:
-            return NextResponse.json({ error: '无效的 action（可选: start, stop, trigger-prompt-sync）' }, { status: 400 });
+            return NextResponse.json({ error: '无效的 action（可选: start, stop, trigger-prompt-sync, trigger-agent-index）' }, { status: 400 });
     }
 }

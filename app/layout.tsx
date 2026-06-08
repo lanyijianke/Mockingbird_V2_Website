@@ -1,4 +1,5 @@
 import { ToastProvider } from '@/app/ToastContext';
+import BusuanziScript from './BusuanziScript';
 import SiteNav from './SiteNav';
 import SiteFooter from './SiteFooter';
 import MobileTabBar from './MobileTabBar';
@@ -38,6 +39,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <Script id="theme-bootstrap" strategy="beforeInteractive">
           {getThemeBootstrapScript()}
         </Script>
+        <BusuanziScript />
       </head>
       <body>
         <ThemeProvider initialMode={initialThemeMode}>

@@ -23,12 +23,12 @@
 - Modify `lib/pipelines/prompt-sources/remote-sync.ts`: trigger prompt index updates after prompt sync.
 - Modify `/Users/grank/.codex/skills/console-knowledge-handoff/SKILL.md`: document post-publish indexing.
 - Modify `/Users/grank/.codex/skills/console-knowledge-handoff/scripts/console-knowledge-handoff-core.mjs`: call index endpoint after revalidation.
-- Create `/Users/grank/.codex/skills/mockingbird-knowledge/SKILL.md`: external read-only skill instructions.
-- Create `/Users/grank/.codex/skills/mockingbird-knowledge/agents/openai.yaml`: skill UI metadata.
-- Create `/Users/grank/.codex/skills/mockingbird-knowledge/references/api.md`: API contract.
-- Create `/Users/grank/.codex/skills/mockingbird-knowledge/scripts/search.mjs`: search script.
-- Create `/Users/grank/.codex/skills/mockingbird-knowledge/scripts/get-prompt.mjs`: prompt detail script.
-- Create `/Users/grank/.codex/skills/mockingbird-knowledge/scripts/get-article.mjs`: article detail script.
+- Create `/Users/grank/.codex/skills/mockingbird-agent-assets/SKILL.md`: external read-only skill instructions.
+- Create `/Users/grank/.codex/skills/mockingbird-agent-assets/agents/openai.yaml`: skill UI metadata.
+- Create `/Users/grank/.codex/skills/mockingbird-agent-assets/references/api.md`: API contract.
+- Create `/Users/grank/.codex/skills/mockingbird-agent-assets/scripts/search.mjs`: search script.
+- Create `/Users/grank/.codex/skills/mockingbird-agent-assets/scripts/get-prompt.mjs`: prompt detail script.
+- Create `/Users/grank/.codex/skills/mockingbird-agent-assets/scripts/get-article.mjs`: article detail script.
 - Create/update focused unit tests under `tests/unit/`.
 
 ## Task 1: Schema And Types
@@ -166,12 +166,12 @@ Add post-publish indexing and Agent search verification to the workflow and veri
 ## Task 6: External Read-Only Skill
 
 **Files:**
-- Create: `/Users/grank/.codex/skills/mockingbird-knowledge/SKILL.md`
-- Create: `/Users/grank/.codex/skills/mockingbird-knowledge/agents/openai.yaml`
-- Create: `/Users/grank/.codex/skills/mockingbird-knowledge/references/api.md`
-- Create: `/Users/grank/.codex/skills/mockingbird-knowledge/scripts/search.mjs`
-- Create: `/Users/grank/.codex/skills/mockingbird-knowledge/scripts/get-prompt.mjs`
-- Create: `/Users/grank/.codex/skills/mockingbird-knowledge/scripts/get-article.mjs`
+- Create: `/Users/grank/.codex/skills/mockingbird-agent-assets/SKILL.md`
+- Create: `/Users/grank/.codex/skills/mockingbird-agent-assets/agents/openai.yaml`
+- Create: `/Users/grank/.codex/skills/mockingbird-agent-assets/references/api.md`
+- Create: `/Users/grank/.codex/skills/mockingbird-agent-assets/scripts/search.mjs`
+- Create: `/Users/grank/.codex/skills/mockingbird-agent-assets/scripts/get-prompt.mjs`
+- Create: `/Users/grank/.codex/skills/mockingbird-agent-assets/scripts/get-article.mjs`
 
 - [ ] **Step 1: Create skill instructions**
 
@@ -183,7 +183,7 @@ Implement Node ESM scripts using built-in `fetch`, simple argument parsing, comp
 
 - [ ] **Step 3: Smoke-test scripts against a mocked local server or invalid endpoint**
 
-Run each script with `MOCKINGBIRD_KNOWLEDGE_BASE_URL=http://127.0.0.1:9` and confirm it exits non-zero with a clear error.
+Run each script with `MOCKINGBIRD_AGENT_ASSETS_BASE_URL=http://127.0.0.1:9` and confirm it exits non-zero with a clear error.
 
 ## Task 7: Verification And Commit
 

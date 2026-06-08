@@ -240,17 +240,6 @@ async function upsertPromptRecord(
     return { status: 'inserted', id: result.insertId || undefined };
 }
 
-async function indexSyncedPrompt(id: number | undefined): Promise<void> {
-    if (!id) return;
-
-    try {
-        const { indexPrompt } = await import('@/lib/services/agent-search-indexer');
-        await indexPrompt(id);
-    } catch (err) {
-        logger.error('PromptSourceSync', `提示词索引失败: ${id}`, err);
-    }
-}
-
 export async function syncPromptSourceRecords(
     source: PromptSourceConfig,
     records: PromptImportRecord[]
@@ -267,9 +256,6 @@ export async function syncPromptSourceRecords(
             if (result.status === 'inserted') report.newlyAdded++;
             if (result.status === 'updated') report.updated++;
             if (result.status === 'skipped') report.skipped++;
-            if (result.status === 'inserted' || result.status === 'updated') {
-                await indexSyncedPrompt(result.id);
-            }
         } catch (err) {
             logger.error('PromptSourceSync', `入库失败: ${record.title}`, err);
         }

@@ -4,6 +4,11 @@ const mockStartScheduler = vi.fn();
 const mockStopScheduler = vi.fn();
 const mockGetSchedulerStatus = vi.fn(() => ({ running: false, jobs: [] }));
 const mockPromptSync = vi.fn(async () => ({ totalParsed: 0, newlyAdded: 0, updated: 0, skipped: 0 }));
+const mockRunAgentIndexJob = vi.fn(async () => ({
+    success: true,
+    prompts: { processed: 2, indexed: 2, skipped: 0, failed: 0, batches: 1, lastCursor: 2, hasMore: false },
+    articles: { processed: 1, indexed: 1, skipped: 0, failed: 0 },
+}));
 const fetchMock = vi.fn();
 
 vi.mock('@/lib/jobs/scheduler', () => ({
@@ -14,6 +19,10 @@ vi.mock('@/lib/jobs/scheduler', () => ({
 
 vi.mock('@/lib/pipelines/prompt-readme-sync', () => ({
     syncAllAsync: mockPromptSync,
+}));
+
+vi.mock('@/lib/jobs/agent-index-job', () => ({
+    runAgentIndexJob: mockRunAgentIndexJob,
 }));
 
 const ORIGINAL_ADMIN_TOKEN = process.env.KNOWLEDGE_ADMIN_TOKEN;
@@ -28,6 +37,11 @@ describe('POST /api/jobs auth guard', () => {
         vi.stubGlobal('fetch', fetchMock);
         mockGetSchedulerStatus.mockReturnValue({ running: false, jobs: [] });
         mockPromptSync.mockResolvedValue({ totalParsed: 0, newlyAdded: 0, updated: 0, skipped: 0 });
+        mockRunAgentIndexJob.mockResolvedValue({
+            success: true,
+            prompts: { processed: 2, indexed: 2, skipped: 0, failed: 0, batches: 1, lastCursor: 2, hasMore: false },
+            articles: { processed: 1, indexed: 1, skipped: 0, failed: 0 },
+        });
     });
 
     afterEach(() => {
@@ -114,6 +128,30 @@ describe('POST /api/jobs auth guard', () => {
             message: '提示词同步已执行',
             report: {
                 sources: { totalParsed: 3, newlyAdded: 2, updated: 0, skipped: 1 },
+            },
+        });
+    });
+
+    it('runs agent indexing only when trigger-agent-index is called', async () => {
+        const { POST } = await import('@/app/api/jobs/route');
+        const request = new Request('http://localhost:5046/api/jobs?action=trigger-agent-index', {
+            method: 'POST',
+            headers: {
+                'x-admin-token': 'unit-test-token',
+            },
+        });
+
+        const response = await POST(request as never);
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(mockRunAgentIndexJob).toHaveBeenCalledWith();
+        expect(body).toEqual({
+            message: 'Agent 索引同步已执行',
+            report: {
+                success: true,
+                prompts: { processed: 2, indexed: 2, skipped: 0, failed: 0, batches: 1, lastCursor: 2, hasMore: false },
+                articles: { processed: 1, indexed: 1, skipped: 0, failed: 0 },
             },
         });
     });

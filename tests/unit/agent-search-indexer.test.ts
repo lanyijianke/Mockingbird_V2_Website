@@ -48,6 +48,9 @@ describe('agent search indexer', () => {
             content: 'Use the product photo and generate a premium ecommerce poster.',
             category: 'nano-banana-pro',
             coverImageUrl: 'https://assets.example/cover.jpg',
+            videoPreviewUrl: 'https://assets.example/video.mp4',
+            cardPreviewVideoUrl: 'https://assets.example/card.mp4',
+            imagesJson: JSON.stringify(['https://assets.example/example.jpg']),
             author: 'Mockingbird',
             sourceUrl: 'https://github.com/example/prompts',
             copyCount: 8,
@@ -70,6 +73,22 @@ describe('agent search indexer', () => {
             'https://zgnknowledge.online/ai/prompts/123',
         ]));
         expect(JSON.stringify(upsertSql?.[1])).toContain('premium ecommerce poster');
+        const metadata = JSON.parse(String(upsertSql?.[1]?.[9]));
+        expect(metadata).toMatchObject({
+            assetKind: 'prompt',
+            mediaTypes: ['image', 'video'],
+            outputFormats: ['image', 'video'],
+            qualitySignals: {
+                hasCover: true,
+                hasVideo: true,
+                hasExamples: true,
+                copyCount: 8,
+            },
+            author: 'Mockingbird',
+            sourceUrl: 'https://github.com/example/prompts',
+            copyCount: 8,
+        });
+        expect(metadata.useCases).toEqual(expect.arrayContaining(['nano-banana-pro', 'poster', 'product']));
         expect(mockExecute.mock.calls.some(([sql]) => String(sql).includes('DELETE FROM AgentSearchChunks'))).toBe(true);
         expect(mockExecute.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO AgentSearchChunks'))).toBe(true);
     });
@@ -84,8 +103,8 @@ describe('agent search indexer', () => {
                 slug: 'agent-workflow',
                 title: 'Agent Workflow',
                 summary: 'Workflow summary',
-                category: 'ai-tech',
-                categoryName: 'AI技术',
+                category: 'engineering',
+                categoryName: '工程架构',
                 author: '@author',
                 originalUrl: 'https://example.com/source',
                 sourcePlatform: 'x',
@@ -125,7 +144,7 @@ Second paragraph.`);
             'ai',
             'Agent Workflow',
             'Workflow summary',
-            'ai-tech',
+            'engineering',
             'https://zgnknowledge.online/ai/articles/agent-workflow',
         ]));
         expect(JSON.stringify(upsertSql?.[1])).toContain('First paragraph.');
@@ -139,7 +158,7 @@ Second paragraph.`);
                 slug: 'agent-workflow',
                 title: 'Agent Workflow',
                 summary: 'Workflow summary',
-                category: 'ai-tech',
+                category: 'engineering',
                 coverUrl: null,
                 publishedAt: '2026-06-01T00:00:00.000Z',
                 updatedAt: '2026-06-03T00:00:00.000Z',
@@ -162,5 +181,88 @@ Second paragraph.`);
             reason: 'unchanged',
         });
         expect(mockFetchArticleMarkdown).not.toHaveBeenCalled();
+    });
+
+    it('indexes prompts in a bounded batch with a next cursor', async () => {
+        mockQuery.mockResolvedValueOnce([
+            { Id: 101 },
+            { Id: 102 },
+            { Id: 103 },
+        ]);
+        mockGetPromptById.mockImplementation(async (id: number) => ({
+            id,
+            title: `Prompt ${id}`,
+            description: `Description ${id}`,
+            content: `Content ${id}`,
+            category: 'nano-banana',
+            coverImageUrl: null,
+            videoPreviewUrl: null,
+            cardPreviewVideoUrl: null,
+            imagesJson: null,
+            author: null,
+            sourceUrl: null,
+            copyCount: 0,
+            isActive: true,
+            createdAt: '2026-06-01T00:00:00.000Z',
+            updatedAt: null,
+        }));
+
+        const { indexPromptBatch } = await import('@/lib/services/agent-search-indexer');
+        const report = await indexPromptBatch({ afterId: 100, limit: 2 });
+
+        expect(mockQuery.mock.calls[0][0]).toContain('Id > ?');
+        expect(mockQuery.mock.calls[0][1]).toEqual([100, 3]);
+        expect(report).toMatchObject({
+            success: true,
+            processed: 2,
+            requestedLimit: 2,
+            nextCursor: 102,
+            hasMore: true,
+        });
+        expect(report.items.map((item) => item.id)).toEqual(['101', '102']);
+        expect(mockGetPromptById).toHaveBeenCalledTimes(2);
+    });
+
+    it('indexes prompt backlog batches from missing or stale agent documents', async () => {
+        mockQuery.mockResolvedValueOnce([
+            { Id: 201 },
+            { Id: 305 },
+        ]);
+        mockGetPromptById.mockImplementation(async (id: number) => ({
+            id,
+            title: `Prompt ${id}`,
+            description: `Description ${id}`,
+            content: `Content ${id}`,
+            category: 'nano-banana',
+            coverImageUrl: null,
+            videoPreviewUrl: null,
+            cardPreviewVideoUrl: null,
+            imagesJson: null,
+            author: null,
+            sourceUrl: null,
+            copyCount: 0,
+            isActive: true,
+            createdAt: '2026-06-01T00:00:00.000Z',
+            updatedAt: null,
+        }));
+
+        const { indexPromptBacklogBatch } = await import('@/lib/services/agent-search-indexer');
+        const report = await indexPromptBacklogBatch({ limit: 2 });
+
+        expect(mockQuery.mock.calls[0]?.[0]).toContain('LEFT JOIN AgentSearchDocuments');
+        expect(mockQuery.mock.calls[0]?.[0]).toContain('LEFT JOIN (');
+        expect(mockQuery.mock.calls[0]?.[0]).toContain('AgentSearchChunks');
+        expect(mockQuery.mock.calls[0]?.[0]).toContain('CONVERT(d.ContentId USING utf8mb4)');
+        expect(mockQuery.mock.calls[0]?.[0]).toContain('COLLATE utf8mb4_general_ci');
+        expect(mockQuery.mock.calls[0]?.[1]).toEqual([null, null, 3]);
+        expect(report).toMatchObject({
+            success: true,
+            processed: 2,
+            requestedLimit: 2,
+            nextCursor: null,
+            hasMore: false,
+        });
+        expect(report.items.map((item) => item.id)).toEqual(['201', '305']);
+        expect(mockGetPromptById).toHaveBeenCalledTimes(2);
     });
 });

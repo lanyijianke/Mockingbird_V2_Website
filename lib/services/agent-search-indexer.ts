@@ -4,7 +4,12 @@ import { execute, query, queryOne } from '@/lib/db';
 import { fetchAggregatedArticleDirectory, fetchArticleMarkdown, type ArticleDirectoryEntry } from '@/lib/articles/article-directory';
 import { getAllPromptIds, getPromptById } from '@/lib/services/prompt-service';
 import { buildAbsoluteUrl } from '@/lib/site-config';
-import type { AgentIndexReport, AgentIndexReportItem } from './agent-search-types';
+import type { AgentIndexReport, AgentIndexReportItem, AgentPromptBatchIndexReport } from './agent-search-types';
+import { normalizeArticleAsset, normalizePromptAsset } from './agent-asset-normalizer';
+import { createAgentEmbeddingClient, createOpenAiCompatibleEmbeddingProvider } from '@/lib/agent-search/embedding-client';
+import { loadAgentSemanticConfig } from '@/lib/agent-search/semantic-config';
+import { buildAgentVectorPoints } from '@/lib/agent-search/vector-points';
+import { createAgentVectorStoreFromConfig } from '@/lib/agent-search/vector-store';
 
 interface ExistingDocument {
     Id: number;
@@ -25,6 +30,12 @@ interface IndexedDocumentInput {
     metadata: Record<string, unknown>;
     sourceUpdatedAt: string | null;
     chunks: string[];
+}
+
+interface IndexedChunkInput {
+    index: number;
+    text: string;
+    hash: string;
 }
 
 function sha256(value: string): string {
@@ -146,6 +157,82 @@ async function replaceChunks(documentId: number, chunks: string[]): Promise<void
     }
 }
 
+function loadExpectedEmbeddingModel(): string | null {
+    const config = loadAgentSemanticConfig();
+    return config.enabled ? config.embedding.model : null;
+}
+
+async function documentNeedsRefresh(documentId: number, expectedEmbeddingModel: string | null): Promise<boolean> {
+    const row = await queryOne<{
+        ChunkCount: number | null;
+        MissingEmbeddingCount: number | null;
+    }>(
+        `SELECT
+            COUNT(*) AS ChunkCount,
+            SUM(
+                CASE
+                    WHEN ? IS NOT NULL
+                     AND (
+                        EmbeddedAt IS NULL
+                        OR EmbeddingModel IS NULL
+                        OR EmbeddingModel <> ?
+                     )
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS MissingEmbeddingCount
+         FROM AgentSearchChunks
+         WHERE DocumentId = ?`,
+        [expectedEmbeddingModel, expectedEmbeddingModel, documentId]
+    );
+    const chunkCount = Number(row?.ChunkCount || 0);
+    const missingEmbeddingCount = Number(row?.MissingEmbeddingCount || 0);
+    return chunkCount === 0 || missingEmbeddingCount > 0;
+}
+
+async function syncVectorPoints(
+    documentId: number,
+    input: Omit<IndexedDocumentInput, 'searchableText' | 'sourceUpdatedAt'>
+): Promise<void> {
+    const config = loadAgentSemanticConfig();
+    if (!config.enabled) return;
+
+    const chunks: IndexedChunkInput[] = input.chunks.map((text, index) => ({
+        index,
+        text,
+        hash: sha256(text),
+    }));
+    if (chunks.length === 0) return;
+
+    const embeddingClient = createAgentEmbeddingClient({
+        provider: createOpenAiCompatibleEmbeddingProvider(config.embedding),
+        model: config.embedding.model,
+    });
+    const store = createAgentVectorStoreFromConfig(config.qdrant);
+    const embeddings = await embeddingClient.embedChunks(chunks.map((chunk) => chunk.text));
+    const points = buildAgentVectorPoints({
+        contentType: input.contentType,
+        site: input.site,
+        contentId: input.contentId,
+        title: input.title,
+        category: input.category,
+        publicUrl: input.publicUrl,
+        chunks,
+        embeddings,
+        metadata: input.metadata,
+    });
+
+    await store.ensureCollection(embeddings[0]?.length || 768);
+    await store.deleteByDocument(input.contentType, input.site, input.contentId);
+    await store.upsert(points);
+    await execute(
+        `UPDATE AgentSearchChunks
+         SET EmbeddingModel = ?, EmbeddedAt = NOW()
+         WHERE DocumentId = ?`,
+        [config.embedding.model, documentId]
+    );
+}
+
 export async function indexPrompt(id: number): Promise<AgentIndexReportItem> {
     const prompt = await getPromptById(id);
     if (!prompt || !prompt.isActive) {
@@ -165,6 +252,7 @@ export async function indexPrompt(id: number): Promise<AgentIndexReportItem> {
         prompt.description,
         prompt.content,
     ]));
+    const asset = normalizePromptAsset(prompt);
     const documentId = await upsertDocument({
         contentType: 'prompt',
         contentId: String(prompt.id),
@@ -176,6 +264,11 @@ export async function indexPrompt(id: number): Promise<AgentIndexReportItem> {
         coverUrl: prompt.coverImageUrl || null,
         searchableText,
         metadata: {
+            assetKind: asset.assetKind,
+            mediaTypes: asset.mediaTypes,
+            useCases: asset.useCases,
+            outputFormats: asset.outputFormats,
+            qualitySignals: asset.qualitySignals,
             author: prompt.author,
             sourceUrl: prompt.sourceUrl,
             copyCount: prompt.copyCount,
@@ -184,6 +277,27 @@ export async function indexPrompt(id: number): Promise<AgentIndexReportItem> {
         chunks,
     });
     await replaceChunks(documentId, chunks);
+    await syncVectorPoints(documentId, {
+        contentType: 'prompt',
+        contentId: String(prompt.id),
+        site: 'ai',
+        title: prompt.title,
+        summary: prompt.description || null,
+        category: prompt.category,
+        publicUrl: publicUrl(`/ai/prompts/${prompt.id}`),
+        coverUrl: prompt.coverImageUrl || null,
+        metadata: {
+            assetKind: asset.assetKind,
+            mediaTypes: asset.mediaTypes,
+            useCases: asset.useCases,
+            outputFormats: asset.outputFormats,
+            qualitySignals: asset.qualitySignals,
+            author: prompt.author,
+            sourceUrl: prompt.sourceUrl,
+            copyCount: prompt.copyCount,
+        },
+        chunks,
+    });
 
     return { type: 'prompt', id: String(id), status: 'indexed' };
 }
@@ -203,12 +317,37 @@ export async function indexArticle(slug: string, options?: { site?: string; forc
     const sourceUpdatedAt = toMysqlDate(entry.updatedAt || entry.publishedAt);
     const existing = await findDocument('article', site, slug);
     if (!options?.force && existing?.SourceUpdatedAt && toMysqlDate(existing.SourceUpdatedAt) === sourceUpdatedAt) {
-        return { type: 'article', id: slug, status: 'skipped', reason: 'unchanged' };
+        const expectedEmbeddingModel = loadExpectedEmbeddingModel();
+        if (!expectedEmbeddingModel) {
+            return { type: 'article', id: slug, status: 'skipped', reason: 'unchanged' };
+        }
+        const needsRefresh = await documentNeedsRefresh(existing.Id, expectedEmbeddingModel);
+        if (!needsRefresh) {
+            return { type: 'article', id: slug, status: 'skipped', reason: 'unchanged' };
+        }
     }
 
     const markdown = await fetchArticleMarkdown(entry);
     const parsed = matter(markdown);
     const body = compactText(parsed.content);
+    const asset = normalizeArticleAsset({
+        id: entry.id || entry.slug,
+        site: entry.site,
+        title: entry.title,
+        slug: entry.slug,
+        summary: entry.summary || '',
+        category: entry.category || '',
+        categoryName: entry.categoryName || '',
+        status: 1,
+        coverUrl: entry.coverUrl || null,
+        createdAt: entry.publishedAt || entry.updatedAt || '',
+        updatedAt: entry.updatedAt || null,
+        content: body,
+        author: entry.author || null,
+        originalUrl: entry.originalUrl || null,
+        sourcePlatform: entry.sourcePlatform || null,
+        type: entry.type || null,
+    }, { truncated: false });
     const searchableText = joinText([
         entry.title,
         entry.summary,
@@ -231,6 +370,11 @@ export async function indexArticle(slug: string, options?: { site?: string; forc
         coverUrl: entry.coverUrl || null,
         searchableText,
         metadata: {
+            assetKind: asset.assetKind,
+            mediaTypes: asset.mediaTypes,
+            useCases: asset.useCases,
+            outputFormats: asset.outputFormats,
+            qualitySignals: asset.qualitySignals,
             author: entry.author,
             originalUrl: entry.originalUrl,
             sourcePlatform: entry.sourcePlatform,
@@ -240,6 +384,28 @@ export async function indexArticle(slug: string, options?: { site?: string; forc
         chunks,
     });
     await replaceChunks(documentId, chunks);
+    await syncVectorPoints(documentId, {
+        contentType: 'article',
+        contentId: entry.slug,
+        site,
+        title: entry.title,
+        summary: entry.summary || null,
+        category: entry.category || null,
+        publicUrl: publicUrl(`/ai/articles/${entry.slug}`),
+        coverUrl: entry.coverUrl || null,
+        metadata: {
+            assetKind: asset.assetKind,
+            mediaTypes: asset.mediaTypes,
+            useCases: asset.useCases,
+            outputFormats: asset.outputFormats,
+            qualitySignals: asset.qualitySignals,
+            author: entry.author,
+            originalUrl: entry.originalUrl,
+            sourcePlatform: entry.sourcePlatform,
+            tags: entry.tags || [],
+        },
+        chunks,
+    });
 
     return { type: 'article', id: slug, status: 'indexed' };
 }
@@ -255,6 +421,111 @@ export async function indexAllPrompts(): Promise<AgentIndexReport> {
         }
     }
     return { success: items.every((item) => item.status !== 'failed'), items };
+}
+
+export async function indexPromptBatch(options: {
+    afterId?: number;
+    limit?: number;
+} = {}): Promise<AgentPromptBatchIndexReport> {
+    const requestedLimit = Math.min(500, Math.max(1, options.limit || 100));
+    const afterId = Math.max(0, options.afterId || 0);
+    const rows = await query<{ Id: number }>(
+        `SELECT Id
+         FROM Prompts
+         WHERE IsActive = 1 AND Id > ?
+         ORDER BY Id ASC
+         LIMIT ?`,
+        [afterId, requestedLimit + 1]
+    );
+    const batchRows = rows.slice(0, requestedLimit);
+    const items: AgentIndexReportItem[] = [];
+
+    for (const row of batchRows) {
+        try {
+            items.push(await indexPrompt(row.Id));
+        } catch (error) {
+            items.push({ type: 'prompt', id: String(row.Id), status: 'failed', reason: error instanceof Error ? error.message : 'unknown-error' });
+        }
+    }
+
+    const nextCursor = batchRows.length > 0 ? batchRows[batchRows.length - 1]!.Id : null;
+    return {
+        success: items.every((item) => item.status !== 'failed'),
+        items,
+        processed: items.length,
+        requestedLimit,
+        nextCursor,
+        hasMore: rows.length > requestedLimit,
+    };
+}
+
+export async function indexPromptBacklogBatch(options: {
+    limit?: number;
+} = {}): Promise<AgentPromptBatchIndexReport> {
+    const requestedLimit = Math.min(1000, Math.max(1, options.limit || 1000));
+    const expectedEmbeddingModel = loadExpectedEmbeddingModel();
+    const rows = await query<{ Id: number }>(
+        `SELECT p.Id
+         FROM Prompts p
+         LEFT JOIN AgentSearchDocuments d
+           ON d.ContentType = 'prompt'
+          AND d.Site = 'ai'
+          AND CONVERT(d.ContentId USING utf8mb4) COLLATE utf8mb4_general_ci =
+              CAST(p.Id AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_general_ci
+         LEFT JOIN (
+            SELECT
+                c.DocumentId,
+                COUNT(*) AS ChunkCount,
+                SUM(
+                    CASE
+                        WHEN ? IS NOT NULL
+                         AND (
+                            c.EmbeddedAt IS NULL
+                            OR c.EmbeddingModel IS NULL
+                            OR c.EmbeddingModel <> ?
+                         )
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS MissingEmbeddingCount
+            FROM AgentSearchChunks c
+            GROUP BY c.DocumentId
+         ) chunk_state
+           ON chunk_state.DocumentId = d.Id
+         WHERE p.IsActive = 1
+           AND (
+                d.Id IS NULL
+                OR d.SourceUpdatedAt IS NULL
+                OR d.ContentHash IS NULL
+                OR d.SourceUpdatedAt < COALESCE(p.UpdatedAt, p.CreatedAt)
+                OR chunk_state.DocumentId IS NULL
+                OR chunk_state.ChunkCount IS NULL
+                OR chunk_state.ChunkCount = 0
+                OR chunk_state.MissingEmbeddingCount > 0
+           )
+         ORDER BY p.Id ASC
+         LIMIT ?`,
+        [expectedEmbeddingModel, expectedEmbeddingModel, requestedLimit + 1]
+    );
+    const batchRows = rows.slice(0, requestedLimit);
+    const items: AgentIndexReportItem[] = [];
+
+    for (const row of batchRows) {
+        try {
+            items.push(await indexPrompt(row.Id));
+        } catch (error) {
+            items.push({ type: 'prompt', id: String(row.Id), status: 'failed', reason: error instanceof Error ? error.message : 'unknown-error' });
+        }
+    }
+
+    return {
+        success: items.every((item) => item.status !== 'failed'),
+        items,
+        processed: items.length,
+        requestedLimit,
+        nextCursor: null,
+        hasMore: rows.length > requestedLimit,
+    };
 }
 
 export async function indexAllArticles(options?: { site?: string }): Promise<AgentIndexReport> {

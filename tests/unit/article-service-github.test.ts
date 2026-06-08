@@ -14,7 +14,7 @@ vi.mock('@/lib/articles/article-directory', () => ({
 
 const directoryFixture: ArticleDirectorySnapshot = {
     categoriesBySite: {
-        ai: [{ code: 'ai-tech', name: 'AI技术' }],
+        ai: [{ code: 'engineering', name: '工程架构' }],
         finance: [{ code: 'macro', name: '宏观' }],
     },
     entries: [
@@ -49,8 +49,8 @@ const directoryFixture: ArticleDirectorySnapshot = {
             slug: 'prompt-caching',
             title: 'Prompt Caching',
             summary: 'Caching summary',
-            category: 'ai-tech',
-            categoryName: 'AI技术',
+            category: 'engineering',
+            categoryName: '工程架构',
             author: '@_avichawla',
             originalUrl: 'https://x.com/example/1',
             sourcePlatform: 'x',
@@ -72,8 +72,8 @@ const directoryFixture: ArticleDirectorySnapshot = {
             slug: 'agent-loops',
             title: 'Agent Loops',
             summary: 'Agent summary',
-            category: 'ai-tech',
-            categoryName: 'AI技术',
+            category: 'engineering',
+            categoryName: '工程架构',
             author: '@agent',
             originalUrl: 'https://x.com/example/2',
             sourcePlatform: 'x',
@@ -112,13 +112,13 @@ summary: "Caching summary"
 
         expect(result.items.map((item) => item.slug)).toEqual(['prompt-caching', 'agent-loops']);
         expect(result.items[0].site).toBe('ai');
-        expect(result.items[0].categoryName).toBe('AI技术');
+        expect(result.items[0].categoryName).toBe('工程架构');
     });
 
     it('filters related articles within the same site only', async () => {
         const { getRelatedArticles } = await import('@/lib/services/article-service');
 
-        const related = await getRelatedArticles('ai-tech', 'prompt-caching', 6, { site: 'ai' });
+        const related = await getRelatedArticles('engineering', 'prompt-caching', 6, { site: 'ai' });
 
         expect(related.map((item) => item.slug)).toEqual(['agent-loops']);
     });

@@ -41,7 +41,7 @@ export interface ArticleListItem {
     title: string;
     slug: string;
     summary: string;
-    category: string;  // 分类编码 (如 'vibe-coding')
+    category: string;  // 分类编码 (如 'engineering')
     categoryName: string;
     status: ArticleStatus;
     coverUrl?: string | null;

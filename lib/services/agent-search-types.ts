@@ -1,3 +1,9 @@
+import type {
+    AgentAssetKind,
+    AgentAssetQualitySignals,
+    AgentMediaType,
+} from './agent-asset-types';
+
 export type AgentContentType = 'prompt' | 'article';
 export type AgentSearchType = AgentContentType | 'all';
 
@@ -41,6 +47,11 @@ export interface AgentSearchResultItem {
     score: number;
     matchedText: string | null;
     updatedAt: string | null;
+    assetKind: AgentAssetKind;
+    mediaTypes: AgentMediaType[];
+    useCases: string[];
+    outputFormats: string[];
+    qualitySignals: AgentAssetQualitySignals;
 }
 
 export interface AgentSearchResponse {
@@ -50,6 +61,7 @@ export interface AgentSearchResponse {
 
 export type AgentIndexRequest =
     | { type: 'prompt'; id: number }
+    | { type: 'prompt-batch'; afterId?: number; limit?: number }
     | { type: 'article'; site?: string; slug: string }
     | { type: 'all'; site?: string };
 
@@ -63,4 +75,11 @@ export interface AgentIndexReportItem {
 export interface AgentIndexReport {
     success: boolean;
     items: AgentIndexReportItem[];
+}
+
+export interface AgentPromptBatchIndexReport extends AgentIndexReport {
+    processed: number;
+    requestedLimit: number;
+    nextCursor: number | null;
+    hasMore: boolean;
 }

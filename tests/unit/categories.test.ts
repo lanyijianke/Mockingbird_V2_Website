@@ -51,6 +51,18 @@ describe('getSubcategories', () => {
         expect(subs).toEqual(firstGroup.children);
     });
 
+    it('文章分组应使用读者入口式短分类', () => {
+        expect(getSubcategories('articles')).toEqual([
+            { code: 'fundamentals', name: '基础概念' },
+            { code: 'engineering', name: '工程架构' },
+            { code: 'devtools', name: '开发工具' },
+            { code: 'workflows', name: '工作流' },
+            { code: 'applications', name: '应用实践' },
+            { code: 'cases', name: '案例拆解' },
+            { code: 'opinions', name: '观点反思' },
+        ]);
+    });
+
     it('无效分组 code 应返回空数组', () => {
         expect(getSubcategories('nonexistent-group')).toEqual([]);
     });

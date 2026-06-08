@@ -1,9 +1,19 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import SiteFooter from '@/app/SiteFooter';
 
 describe('SiteFooter', () => {
+    const originalBusuanziEnabled = process.env.NEXT_PUBLIC_BUSUANZI_ENABLED;
+
+    afterEach(() => {
+        if (originalBusuanziEnabled === undefined) {
+            delete process.env.NEXT_PUBLIC_BUSUANZI_ENABLED;
+        } else {
+            process.env.NEXT_PUBLIC_BUSUANZI_ENABLED = originalBusuanziEnabled;
+        }
+    });
+
     it('links only to real canonical sections', () => {
         const html = renderToStaticMarkup(createElement(SiteFooter));
 
@@ -33,5 +43,17 @@ describe('SiteFooter', () => {
         expect(html).toContain('站点');
         expect(html).toContain('GitHub 热榜');
         expect(html).toContain('关于我');
+    });
+
+    it('renders Busuanzi site counters only when enabled', () => {
+        delete process.env.NEXT_PUBLIC_BUSUANZI_ENABLED;
+        expect(renderToStaticMarkup(createElement(SiteFooter))).not.toContain('busuanzi_value_site_pv');
+
+        process.env.NEXT_PUBLIC_BUSUANZI_ENABLED = 'true';
+        const html = renderToStaticMarkup(createElement(SiteFooter));
+
+        expect(html).toContain('本站访问');
+        expect(html).toContain('id="busuanzi_value_site_pv"');
+        expect(html).toContain('id="busuanzi_value_site_uv"');
     });
 });

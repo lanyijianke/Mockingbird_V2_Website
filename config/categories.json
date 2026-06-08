@@ -35,36 +35,32 @@
             "name": "文章",
             "children": [
                 {
-                    "code": "vibe-coding",
-                    "name": "Vibe Coding"
+                    "code": "fundamentals",
+                    "name": "基础概念"
                 },
                 {
-                    "code": "prompts",
-                    "name": "提示词"
+                    "code": "engineering",
+                    "name": "工程架构"
                 },
                 {
-                    "code": "agents",
-                    "name": "智能体"
+                    "code": "devtools",
+                    "name": "开发工具"
                 },
                 {
-                    "code": "industry-news",
-                    "name": "行业动态"
+                    "code": "workflows",
+                    "name": "工作流"
                 },
                 {
-                    "code": "tech-practice",
-                    "name": "技术实战"
+                    "code": "applications",
+                    "name": "应用实践"
                 },
                 {
-                    "code": "tech-basics",
-                    "name": "原理科普"
+                    "code": "cases",
+                    "name": "案例拆解"
                 },
                 {
-                    "code": "solutions",
-                    "name": "解决方案"
-                },
-                {
-                    "code": "investment-research",
-                    "name": "投资研究"
+                    "code": "opinions",
+                    "name": "观点反思"
                 }
             ]
         }

@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { buildAbsoluteUrl } from '@/lib/site-config';
 import type { ContentRevalidationEvent } from '@/lib/cache/content-revalidation';
+import { runAgentIndexJob } from '@/lib/jobs/agent-index-job';
 import { syncAllAsync as promptSourceSync } from '@/lib/pipelines/prompt-readme-sync';
 import { logger } from '@/lib/utils/logger';
 
@@ -10,6 +11,7 @@ import { logger } from '@/lib/utils/logger';
 // 调度策略：
 //   PromptSyncJob        → 每 2 小时  (README/source 提示词同步)
 //   RankingSyncJob       → 每 2 小时  (重验证并预热榜单 ISR 页面)
+//   AgentIndexSyncJob    → 每 2 小时  (补齐 Agent MySQL 索引与 Qdrant 向量)
 //
 // 通过 instrumentation.ts 在服务端进程启动时自动调用 startScheduler()。
 // ════════════════════════════════════════════════════════════════
@@ -17,6 +19,7 @@ import { logger } from '@/lib/utils/logger';
 const JOB_INTERVALS = {
     promptSync: process.env.JOB_PROMPT_SYNC_CRON || '30 0 */2 * * *',       // 每 2 小时的第 30 秒
     rankingSync: process.env.JOB_RANKING_SYNC_CRON || '0 */2 * * *',        // 每 2 小时
+    agentIndexSync: process.env.JOB_AGENT_INDEX_CRON || '0 15 */2 * * *',   // 每 2 小时的第 15 分钟
 };
 
 let isRunning = false;
@@ -111,14 +114,29 @@ export function startScheduler(): void {
         });
     }, { scheduled: false } as Record<string, unknown>);
 
+    // ─── Agent 搜索索引与向量同步任务 ───
+    const agentIndexTask = cron.schedule(JOB_INTERVALS.agentIndexSync, async () => {
+        await runWithLock('AgentIndexSync', async () => {
+            logger.info('AgentIndexSyncJob', '🔄 开始执行...');
+            const report = await runAgentIndexJob();
+            const level = report.success ? 'info' : 'warn';
+            logger[level](
+                'AgentIndexSyncJob',
+                `Prompts: 处理 ${report.prompts.processed}, indexed ${report.prompts.indexed}, skipped ${report.prompts.skipped}, failed ${report.prompts.failed}; Articles: 处理 ${report.articles.processed}, indexed ${report.articles.indexed}, skipped ${report.articles.skipped}, failed ${report.articles.failed}`,
+            );
+        });
+    }, { scheduled: false } as Record<string, unknown>);
+
     // 启动定时任务
     promptTask.start();
     rankingTask.start();
-    tasks.push(promptTask, rankingTask);
+    agentIndexTask.start();
+    tasks.push(promptTask, rankingTask, agentIndexTask);
     isRunning = true;
 
     logger.info('Scheduler', `  📌 提示词同步:  ${JOB_INTERVALS.promptSync}`);
     logger.info('Scheduler', `  📌 排行榜同步:  ${JOB_INTERVALS.rankingSync}`);
+    logger.info('Scheduler', `  📌 Agent 索引同步:  ${JOB_INTERVALS.agentIndexSync}`);
     logger.info('Scheduler', '══════════════════════════════════════');
 
     // 启动时预热榜单 ISR 页面（延迟 5 秒避免阻塞启动）。
@@ -150,6 +168,7 @@ export function getSchedulerStatus(): SchedulerStatus {
         jobs: [
             { name: '提示词同步', interval: JOB_INTERVALS.promptSync, locked: !!locks['PromptSync'] },
             { name: '排行榜同步', interval: JOB_INTERVALS.rankingSync, locked: !!locks['RankingSync'] },
+            { name: 'Agent 索引同步', interval: JOB_INTERVALS.agentIndexSync, locked: !!locks['AgentIndexSync'] },
         ],
     };
 }
