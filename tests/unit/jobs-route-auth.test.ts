@@ -132,6 +132,29 @@ describe('POST /api/jobs auth guard', () => {
         });
     });
 
+    it('uses localhost for internal prompt revalidation in development even if SITE_URL points to production', async () => {
+        process.env.SITE_URL = 'https://zgnknowledge.online';
+        mockPromptSync.mockResolvedValue({ totalParsed: 3, newlyAdded: 2, updated: 0, skipped: 1 });
+
+        const { POST } = await import('@/app/api/jobs/route');
+        const request = new Request('http://localhost:5046/api/jobs?action=trigger-prompt-sync', {
+            method: 'POST',
+            headers: {
+                'x-admin-token': 'unit-test-token',
+            },
+        });
+
+        const response = await POST(request as never);
+
+        expect(response.status).toBe(200);
+        expect(fetchMock).toHaveBeenCalledWith(
+            'http://localhost:5046/api/revalidate/content',
+            expect.objectContaining({
+                method: 'POST',
+            }),
+        );
+    });
+
     it('runs agent indexing only when trigger-agent-index is called', async () => {
         const { POST } = await import('@/app/api/jobs/route');
         const request = new Request('http://localhost:5046/api/jobs?action=trigger-agent-index', {

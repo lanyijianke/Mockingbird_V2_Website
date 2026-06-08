@@ -14,7 +14,7 @@ export type AdminAuthResult = AdminAuthFailure | AdminAuthSuccess;
 
 const BEARER_PREFIX = 'Bearer ';
 
-function getConfiguredAdminToken(): string {
+export function getConfiguredAdminToken(): string {
     return process.env.KNOWLEDGE_ADMIN_TOKEN || process.env.ADMIN_API_TOKEN || '';
 }
 
@@ -39,6 +39,12 @@ export function secureTokenEquals(expected: string, actual: string): boolean {
 
     if (expectedBuffer.length !== actualBuffer.length) return false;
     return timingSafeEqual(expectedBuffer, actualBuffer);
+}
+
+export function isValidAdminToken(requestToken: string | null | undefined): boolean {
+    const configuredToken = getConfiguredAdminToken();
+    if (!configuredToken || !requestToken) return false;
+    return secureTokenEquals(configuredToken, requestToken);
 }
 
 export function verifyAdminHeaders(headers: Headers): AdminAuthResult {

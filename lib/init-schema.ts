@@ -34,6 +34,22 @@ async function ensureColumn(
     await conn.query(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDefinition}`);
 }
 
+async function deactivateDuplicatePrompts(conn: PoolConnection): Promise<void> {
+    await conn.query(`
+        UPDATE Prompts p
+        JOIN (
+            SELECT Category, SourceUrl, MAX(Id) AS KeepId
+            FROM Prompts
+            WHERE IsActive = 1 AND SourceUrl IS NOT NULL AND SourceUrl != ''
+            GROUP BY Category, SourceUrl
+            HAVING COUNT(*) > 1
+        ) dedupe
+          ON dedupe.Category = p.Category AND dedupe.SourceUrl = p.SourceUrl
+        SET p.IsActive = 0
+        WHERE p.IsActive = 1 AND p.Id != dedupe.KeepId
+    `);
+}
+
 async function dropLegacyTables(conn: PoolConnection): Promise<void> {
     await conn.query('DROP TABLE IF EXISTS InvitationRedemptions');
     await conn.query('DROP TABLE IF EXISTS InvitationCodes');
@@ -144,6 +160,8 @@ export async function initDatabase(conn: PoolConnection): Promise<void> {
         SET CreatedAt = NOW()
         WHERE CreatedAt IS NULL
     `);
+
+    await deactivateDuplicatePrompts(conn);
 
     await ensureIndex(conn, 'idx_prompts_created', `CREATE INDEX idx_prompts_created ON Prompts(CreatedAt)`);
     await ensureIndex(conn, 'idx_prompts_category', `CREATE INDEX idx_prompts_category ON Prompts(Category)`);

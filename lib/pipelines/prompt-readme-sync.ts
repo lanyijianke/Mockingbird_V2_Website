@@ -1,4 +1,29 @@
-import type { PipelineReport } from './pipeline-shared';
+import { queryScalar } from '@/lib/db';
+import { createEmptyReport, type PipelineReport } from './pipeline-shared';
+import { logger } from '@/lib/utils/logger';
+
+const PROMPT_SYNC_LOCK_NAME = 'prompt-source-sync';
+
+async function withPromptSyncLock<T>(task: () => Promise<T>): Promise<T | null> {
+    const acquired = await queryScalar<number>(
+        'SELECT GET_LOCK(?, 0) AS Acquired',
+        [PROMPT_SYNC_LOCK_NAME]
+    );
+
+    if (acquired !== 1) {
+        logger.warn('PromptSyncJob', '检测到其他进程正在执行提示词同步，当前任务跳过');
+        return null;
+    }
+
+    try {
+        return await task();
+    } finally {
+        await queryScalar<number>(
+            'SELECT RELEASE_LOCK(?) AS Released',
+            [PROMPT_SYNC_LOCK_NAME]
+        ).catch(() => {});
+    }
+}
 
 // ════════════════════════════════════════════════════════════════
 // GitHub README 提示词同步管线
@@ -36,8 +61,12 @@ export function inferCloudflareVideoDownloadUrl(imageUrl: string): string | null
 }
 
 export async function syncAllAsync(): Promise<PipelineReport> {
-    const { syncConfiguredPromptSources } = await import('./prompt-sources/remote-sync');
-    return syncConfiguredPromptSources();
+    const lockedReport = await withPromptSyncLock(async () => {
+        const { syncConfiguredPromptSources } = await import('./prompt-sources/remote-sync');
+        return syncConfiguredPromptSources();
+    });
+
+    return lockedReport ?? createEmptyReport();
 }
 
 /**

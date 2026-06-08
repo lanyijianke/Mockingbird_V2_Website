@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
     extractAdminToken,
+    isValidAdminToken,
     secureTokenEquals,
     verifyAdminHeaders,
 } from '@/lib/utils/admin-auth';
@@ -74,5 +75,13 @@ describe('admin-auth', () => {
         const result = verifyAdminHeaders(headers);
 
         expect(result.ok).toBe(true);
+    });
+
+    it('isValidAdminToken should validate raw token values', () => {
+        process.env.KNOWLEDGE_ADMIN_TOKEN = 'my-admin-token';
+
+        expect(isValidAdminToken('my-admin-token')).toBe(true);
+        expect(isValidAdminToken('wrong-token')).toBe(false);
+        expect(isValidAdminToken(null)).toBe(false);
     });
 });

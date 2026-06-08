@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { buildAbsoluteUrl } from '@/lib/site-config';
+import { buildInternalUrl } from '@/lib/site-config';
 import { verifyAdminHeaders } from '@/lib/utils/admin-auth';
 
 export const runtime = 'nodejs';
@@ -12,7 +12,7 @@ async function requestContentRevalidation(body: unknown): Promise<void> {
     const adminToken = getAdminToken();
     if (!adminToken) return;
 
-    const response = await fetch(buildAbsoluteUrl('/api/revalidate/content'), {
+    const response = await fetch(buildInternalUrl('/api/revalidate/content'), {
         method: 'POST',
         headers: {
             'content-type': 'application/json',
