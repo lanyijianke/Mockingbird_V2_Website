@@ -1,5 +1,5 @@
 import cron from 'node-cron';
-import { buildAbsoluteUrl } from '@/lib/site-config';
+import { buildInternalUrl } from '@/lib/site-config';
 import type { ContentRevalidationEvent } from '@/lib/cache/content-revalidation';
 import { runAgentIndexJob } from '@/lib/jobs/agent-index-job';
 import { syncAllAsync as promptSourceSync } from '@/lib/pipelines/prompt-readme-sync';
@@ -22,24 +22,62 @@ const JOB_INTERVALS = {
     agentIndexSync: process.env.JOB_AGENT_INDEX_CRON || '0 15 */2 * * *',   // 每 2 小时的第 15 分钟
 };
 
-let isRunning = false;
-const tasks: ReturnType<typeof cron.schedule>[] = [];
+interface SchedulerGlobalState {
+    isRunning: boolean;
+    tasks: ReturnType<typeof cron.schedule>[];
+    locks: Record<string, boolean>;
+}
 
-// 防止重入的运行锁
-const locks: Record<string, boolean> = {};
+const schedulerStateKey = Symbol.for('mockingbird.knowledge.schedulerState');
+const globalWithScheduler = globalThis as typeof globalThis & {
+    [schedulerStateKey]?: SchedulerGlobalState;
+};
+
+const schedulerState = globalWithScheduler[schedulerStateKey] ??= {
+    isRunning: false,
+    tasks: [],
+    locks: {},
+};
+
+type PersistedJobStatus = 'success' | 'warning' | 'error';
+
+function persistJobSnapshot(
+    source: string,
+    message: string,
+    payload: Record<string, unknown>
+): void {
+    logger.persist(source, message, JSON.stringify(payload));
+}
+
+function persistJobOutcome(input: {
+    source: string;
+    jobKey: string;
+    startedAt: string;
+    status: PersistedJobStatus;
+    message: string;
+    summary?: Record<string, unknown>;
+}): void {
+    persistJobSnapshot(input.source, input.message, {
+        jobKey: input.jobKey,
+        startedAt: input.startedAt,
+        finishedAt: new Date().toISOString(),
+        status: input.status,
+        ...(input.summary ? input.summary : {}),
+    });
+}
 
 async function runWithLock(name: string, fn: () => Promise<void>): Promise<void> {
-    if (locks[name]) {
+    if (schedulerState.locks[name]) {
         logger.debug('Scheduler', `${name} 尚在运行中，跳过`);
         return;
     }
-    locks[name] = true;
+    schedulerState.locks[name] = true;
     try {
         await fn();
     } catch (err) {
         logger.error('Scheduler', `${name} 执行异常`, err);
     } finally {
-        locks[name] = false;
+        schedulerState.locks[name] = false;
     }
 }
 
@@ -54,7 +92,7 @@ async function requestContentRevalidation(event: ContentRevalidationEvent): Prom
         return false;
     }
 
-    const response = await fetch(buildAbsoluteUrl('/api/revalidate/content'), {
+    const response = await fetch(buildInternalUrl('/api/revalidate/content'), {
         method: 'POST',
         headers: {
             'content-type': 'application/json',
@@ -72,17 +110,33 @@ async function requestContentRevalidation(event: ContentRevalidationEvent): Prom
 }
 
 async function revalidateAndWarmRankings(): Promise<void> {
+    const startedAt = new Date().toISOString();
     logger.info('RankingSyncJob', '🔄 开始重验证榜单静态页面...');
     await requestContentRevalidation({
         type: 'rankings',
         action: 'refresh',
         kind: 'all',
     });
-    logger.info('RankingSyncJob', '✅ 执行完毕');
+    const message = '✅ 执行完毕';
+    logger.info('RankingSyncJob', message);
+    persistJobOutcome({
+        source: 'RankingSyncJob',
+        jobKey: 'ranking-sync',
+        startedAt,
+        status: 'success',
+        message,
+        summary: {
+            revalidation: {
+                type: 'rankings',
+                action: 'refresh',
+                kind: 'all',
+            },
+        },
+    });
 }
 
 export function startScheduler(): void {
-    if (isRunning) {
+    if (schedulerState.isRunning) {
         logger.info('Scheduler', '调度器已在运行');
         return;
     }
@@ -94,15 +148,36 @@ export function startScheduler(): void {
     const promptTask = cron.schedule(JOB_INTERVALS.promptSync, async () => {
         await runWithLock('PromptSync', async () => {
             logger.info('PromptSyncJob', '🔄 开始执行...');
+            const startedAt = new Date().toISOString();
 
             try {
                 const sourceReport = await promptSourceSync();
+                const message = `Sources: 解析 ${sourceReport.totalParsed}, 新增 ${sourceReport.newlyAdded}, 更新 ${sourceReport.updated}, 跳过 ${sourceReport.skipped}`;
                 if (sourceReport.newlyAdded > 0 || sourceReport.updated > 0) {
                     await requestContentRevalidation({ type: 'prompt', action: 'sync' });
-                    logger.persist('PromptSyncJob', `Sources: 解析 ${sourceReport.totalParsed}, 新增 ${sourceReport.newlyAdded}, 更新 ${sourceReport.updated}, 跳过 ${sourceReport.skipped}`);
                 }
+                persistJobOutcome({
+                    source: 'PromptSyncJob',
+                    jobKey: 'prompt-sync',
+                    startedAt,
+                    status: 'success',
+                    message,
+                    summary: {
+                        sources: sourceReport,
+                    },
+                });
             } catch (err) {
                 logger.error('PromptSyncJob', 'Source 同步失败:', err);
+                persistJobOutcome({
+                    source: 'PromptSyncJob',
+                    jobKey: 'prompt-sync',
+                    startedAt,
+                    status: 'error',
+                    message: 'Source 同步失败:',
+                    summary: {
+                        error: String(err),
+                    },
+                });
             }
         });
     }, { scheduled: false } as Record<string, unknown>);
@@ -118,12 +193,36 @@ export function startScheduler(): void {
     const agentIndexTask = cron.schedule(JOB_INTERVALS.agentIndexSync, async () => {
         await runWithLock('AgentIndexSync', async () => {
             logger.info('AgentIndexSyncJob', '🔄 开始执行...');
-            const report = await runAgentIndexJob();
-            const level = report.success ? 'info' : 'warn';
-            logger[level](
-                'AgentIndexSyncJob',
-                `Prompts: 处理 ${report.prompts.processed}, indexed ${report.prompts.indexed}, skipped ${report.prompts.skipped}, failed ${report.prompts.failed}; Articles: 处理 ${report.articles.processed}, indexed ${report.articles.indexed}, skipped ${report.articles.skipped}, failed ${report.articles.failed}`,
-            );
+            const startedAt = new Date().toISOString();
+            try {
+                const report = await runAgentIndexJob();
+                const message = `Prompts: 处理 ${report.prompts.processed}, indexed ${report.prompts.indexed}, skipped ${report.prompts.skipped}, failed ${report.prompts.failed}; Articles: 处理 ${report.articles.processed}, indexed ${report.articles.indexed}, skipped ${report.articles.skipped}, failed ${report.articles.failed}`;
+                const level = report.success ? 'info' : 'warn';
+                logger[level]('AgentIndexSyncJob', message);
+                persistJobOutcome({
+                    source: 'AgentIndexSyncJob',
+                    jobKey: 'agent-index',
+                    startedAt,
+                    status: report.success ? 'success' : 'warning',
+                    message,
+                    summary: {
+                        prompts: report.prompts,
+                        articles: report.articles,
+                    },
+                });
+            } catch (err) {
+                logger.error('AgentIndexSyncJob', 'Agent 索引同步失败:', err);
+                persistJobOutcome({
+                    source: 'AgentIndexSyncJob',
+                    jobKey: 'agent-index',
+                    startedAt,
+                    status: 'error',
+                    message: 'Agent 索引同步失败:',
+                    summary: {
+                        error: String(err),
+                    },
+                });
+            }
         });
     }, { scheduled: false } as Record<string, unknown>);
 
@@ -131,8 +230,8 @@ export function startScheduler(): void {
     promptTask.start();
     rankingTask.start();
     agentIndexTask.start();
-    tasks.push(promptTask, rankingTask, agentIndexTask);
-    isRunning = true;
+    schedulerState.tasks.push(promptTask, rankingTask, agentIndexTask);
+    schedulerState.isRunning = true;
 
     logger.info('Scheduler', `  📌 提示词同步:  ${JOB_INTERVALS.promptSync}`);
     logger.info('Scheduler', `  📌 排行榜同步:  ${JOB_INTERVALS.rankingSync}`);
@@ -147,14 +246,14 @@ export function startScheduler(): void {
 }
 
 export function stopScheduler(): void {
-    tasks.forEach(t => t.stop());
-    tasks.length = 0;
-    isRunning = false;
+    schedulerState.tasks.forEach(t => t.stop());
+    schedulerState.tasks.length = 0;
+    schedulerState.isRunning = false;
     logger.info('Scheduler', '调度器已停止');
 }
 
 export function isSchedulerRunning(): boolean {
-    return isRunning;
+    return schedulerState.isRunning;
 }
 
 export interface SchedulerStatus {
@@ -164,11 +263,11 @@ export interface SchedulerStatus {
 
 export function getSchedulerStatus(): SchedulerStatus {
     return {
-        running: isRunning,
+        running: schedulerState.isRunning,
         jobs: [
-            { name: '提示词同步', interval: JOB_INTERVALS.promptSync, locked: !!locks['PromptSync'] },
-            { name: '排行榜同步', interval: JOB_INTERVALS.rankingSync, locked: !!locks['RankingSync'] },
-            { name: 'Agent 索引同步', interval: JOB_INTERVALS.agentIndexSync, locked: !!locks['AgentIndexSync'] },
+            { name: '提示词同步', interval: JOB_INTERVALS.promptSync, locked: !!schedulerState.locks['PromptSync'] },
+            { name: '排行榜同步', interval: JOB_INTERVALS.rankingSync, locked: !!schedulerState.locks['RankingSync'] },
+            { name: 'Agent 索引同步', interval: JOB_INTERVALS.agentIndexSync, locked: !!schedulerState.locks['AgentIndexSync'] },
         ],
     };
 }

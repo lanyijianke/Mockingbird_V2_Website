@@ -75,6 +75,17 @@ describe('knowledge scheduler', () => {
         ]);
     });
 
+    it('keeps scheduler state across module reloads in the same server process', async () => {
+        const scheduler = await import('@/lib/jobs/scheduler');
+        scheduler.startScheduler();
+
+        vi.resetModules();
+        const reloadedScheduler = await import('@/lib/jobs/scheduler');
+
+        expect(reloadedScheduler.getSchedulerStatus().running).toBe(true);
+        expect(reloadedScheduler.getSchedulerStatus().jobs).toHaveLength(3);
+    });
+
     it('defaults prompt source sync to every two hours', async () => {
         const scheduler = await import('@/lib/jobs/scheduler');
 
