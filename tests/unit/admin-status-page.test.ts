@@ -167,4 +167,21 @@ describe('admin status page', () => {
         expect(html).not.toContain('coverage gap');
         expect(html).not.toContain('UNKNOWN');
     });
+
+    it('admin status css inherits existing theme tokens', async () => {
+        const fs = await import('node:fs/promises');
+        const path = await import('node:path');
+        const css = await fs.readFile(
+            path.join(process.cwd(), 'app/_styles/admin-status.css'),
+            'utf8',
+        );
+
+        expect(css).toContain('var(--theme-bg)');
+        expect(css).toContain('var(--theme-surface)');
+        expect(css).toContain('var(--theme-border)');
+        expect(css).toContain('var(--theme-text)');
+        expect(css).not.toContain('#c8dbff');
+        expect(css).not.toContain('#465768');
+        expect(css).not.toContain('border-radius: 24px');
+    });
 });
