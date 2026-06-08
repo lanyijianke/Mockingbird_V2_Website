@@ -215,7 +215,7 @@ async function loadRecentJobRows(): Promise<JobLogRow[]> {
         return await query<JobLogRow>(
             `SELECT Source, Message, Detail, CreatedAt
              FROM SystemLogs
-             WHERE Level IN ('info', 'warn', 'error')
+             WHERE Level = 'info'
                AND Source IN ('PromptSyncJob', 'RankingSyncJob', 'AgentIndexSyncJob')
              ORDER BY CreatedAt DESC`,
         );
@@ -229,7 +229,8 @@ async function loadTodayJobRows(): Promise<DailyJobRow[]> {
         return await query<DailyJobRow>(
             `SELECT Source, Message, Detail, CreatedAt
              FROM SystemLogs
-             WHERE Source IN ('PromptSyncJob', 'RankingSyncJob', 'AgentIndexSyncJob')
+             WHERE Level = 'info'
+               AND Source IN ('PromptSyncJob', 'RankingSyncJob', 'AgentIndexSyncJob')
                AND CreatedAt >= ?
              ORDER BY CreatedAt DESC`,
             [getTodayStart()],
