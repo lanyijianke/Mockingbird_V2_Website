@@ -156,6 +156,15 @@ export default async function AdminStatusPage() {
                 </div>
                 <div className="admin-status__table-wrap">
                     <table className="admin-status__table">
+                        <colgroup>
+                            <col className="admin-status__col-job" />
+                            <col className="admin-status__col-interval" />
+                            <col className="admin-status__col-current" />
+                            <col className="admin-status__col-latest" />
+                            <col className="admin-status__col-duration" />
+                            <col className="admin-status__col-today" />
+                            <col className="admin-status__col-summary" />
+                        </colgroup>
                         <thead>
                             <tr>
                                 <th>Job</th>

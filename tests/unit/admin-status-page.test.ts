@@ -191,6 +191,37 @@ describe('admin status page', () => {
         expect(html).toContain('cron: 0 15 */2 * * *');
     });
 
+    it('uses stable job table columns so long summaries do not crush scan fields', async () => {
+        process.env.KNOWLEDGE_ADMIN_TOKEN = 'secret-token';
+        mockCookies.mockResolvedValue({
+            get: vi.fn((name: string) => {
+                if (name === 'admin_token') return { value: 'secret-token' };
+                return undefined;
+            }),
+        });
+        mockHeaders.mockResolvedValue({
+            get: vi.fn(() => 'example.com'),
+        });
+
+        const mod = await import('@/app/ai/admin/status/page');
+        const html = renderToString(await mod.default());
+
+        expect(html).toContain('admin-status__col-job');
+        expect(html).toContain('admin-status__col-interval');
+        expect(html).toContain('admin-status__col-summary');
+
+        const fs = await import('node:fs/promises');
+        const path = await import('node:path');
+        const css = await fs.readFile(
+            path.join(process.cwd(), 'app/_styles/admin-status.css'),
+            'utf8',
+        );
+
+        expect(css).toContain('table-layout: fixed');
+        expect(css).toContain('min-width: 1280px');
+        expect(css).toContain('.admin-status__col-summary');
+    });
+
     it('admin status css inherits existing theme tokens', async () => {
         const fs = await import('node:fs/promises');
         const path = await import('node:path');

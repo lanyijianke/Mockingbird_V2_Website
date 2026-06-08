@@ -135,8 +135,37 @@
 
 .admin-status__table {
   width: 100%;
-  min-width: 920px;
+  min-width: 1280px;
   border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.admin-status__col-job {
+  width: 110px;
+}
+
+.admin-status__col-interval {
+  width: 210px;
+}
+
+.admin-status__col-current {
+  width: 90px;
+}
+
+.admin-status__col-latest {
+  width: 180px;
+}
+
+.admin-status__col-duration {
+  width: 90px;
+}
+
+.admin-status__col-today {
+  width: 230px;
+}
+
+.admin-status__col-summary {
+  width: auto;
 }
 
 .admin-status__table th,
@@ -146,6 +175,7 @@
   text-align: left;
   vertical-align: top;
   font-size: 14px;
+  overflow-wrap: anywhere;
 }
 
 .admin-status__table th {
@@ -173,6 +203,7 @@
 .admin-status__interval-cron {
   margin-top: 3px;
   color: var(--theme-text-muted);
+  white-space: normal;
 }
 
 .admin-status__two-column {
