@@ -135,7 +135,7 @@ function applySchedulerState(payload: MonitoringPayload): Map<string, Monitoring
 
 function isLocalDevelopmentNoiseLog(log: MonitoringLogEntry): boolean {
     return process.env.NODE_ENV !== 'production'
-        && process.env.SITE_URL?.includes('zgnknowledge.online')
+        && Boolean(process.env.SITE_URL?.includes('zgnknowledge.online'))
         && log.source === 'Scheduler'
         && log.level === 'warn'
         && log.message.startsWith('统一重验证失败: HTTP 403');
