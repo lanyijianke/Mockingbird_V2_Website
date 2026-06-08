@@ -168,6 +168,29 @@ describe('admin status page', () => {
         expect(html).not.toContain('UNKNOWN');
     });
 
+    it('renders human-readable job intervals while preserving raw cron values', async () => {
+        process.env.KNOWLEDGE_ADMIN_TOKEN = 'secret-token';
+        mockCookies.mockResolvedValue({
+            get: vi.fn((name: string) => {
+                if (name === 'admin_token') return { value: 'secret-token' };
+                return undefined;
+            }),
+        });
+        mockHeaders.mockResolvedValue({
+            get: vi.fn(() => 'example.com'),
+        });
+
+        const mod = await import('@/app/ai/admin/status/page');
+        const html = renderToString(await mod.default());
+
+        expect(html).toContain('每 2 小时，整点后 30 秒');
+        expect(html).toContain('每 2 小时，整点');
+        expect(html).toContain('每 2 小时，第 15 分钟');
+        expect(html).toContain('cron: 30 0 */2 * * *');
+        expect(html).toContain('cron: 0 */2 * * *');
+        expect(html).toContain('cron: 0 15 */2 * * *');
+    });
+
     it('admin status css inherits existing theme tokens', async () => {
         const fs = await import('node:fs/promises');
         const path = await import('node:path');

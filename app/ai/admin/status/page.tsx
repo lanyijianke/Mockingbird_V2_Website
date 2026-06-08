@@ -41,6 +41,19 @@ function renderCurrentLabel(locked: boolean): string {
     return locked ? '正在执行' : '空闲';
 }
 
+function renderIntervalLabel(cron: string): string {
+    switch (cron) {
+        case '30 0 */2 * * *':
+            return '每 2 小时，整点后 30 秒';
+        case '0 */2 * * *':
+            return '每 2 小时，整点';
+        case '0 15 */2 * * *':
+            return '每 2 小时，第 15 分钟';
+        default:
+            return cron || '-';
+    }
+}
+
 function formatDuration(durationMs: number | null): string {
     if (durationMs === null) return '-';
     if (durationMs < 1000) return `${durationMs}ms`;
@@ -158,7 +171,12 @@ export default async function AdminStatusPage() {
                             {status.jobs.map((job) => (
                                 <tr key={job.key}>
                                     <td>{job.name}</td>
-                                    <td><code>{job.interval || '-'}</code></td>
+                                    <td>
+                                        <span className="admin-status__interval-label">{renderIntervalLabel(job.interval)}</span>
+                                        {job.interval ? (
+                                            <code className="admin-status__interval-cron">{`cron: ${job.interval}`}</code>
+                                        ) : null}
+                                    </td>
                                     <td><span className={`admin-status__pill is-${job.locked ? 'running' : 'idle'}`}>{renderCurrentLabel(job.locked)}</span></td>
                                     <td><span className={`admin-status__pill is-${job.latestRun.status}`}>{renderLatestRun(job)}</span></td>
                                     <td>{formatDuration(job.latestRun.durationMs)}</td>

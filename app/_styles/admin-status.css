@@ -160,6 +160,21 @@
   font-size: 12px;
 }
 
+.admin-status__interval-label,
+.admin-status__interval-cron {
+  display: block;
+}
+
+.admin-status__interval-label {
+  color: var(--theme-text);
+  font-weight: 600;
+}
+
+.admin-status__interval-cron {
+  margin-top: 3px;
+  color: var(--theme-text-muted);
+}
+
 .admin-status__two-column {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
