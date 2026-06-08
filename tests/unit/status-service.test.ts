@@ -181,6 +181,32 @@ describe('getMonitoringStatus', () => {
         expect(promptSync?.latestRun.status).toBe('success');
     });
 
+    it('treats legacy structured info job rows without status as successful runs', async () => {
+        mockQuery
+            .mockResolvedValueOnce([])
+            .mockResolvedValueOnce([
+                { Source: 'PromptSyncJob', Message: 'legacy success', Detail: '{"sources":{"totalParsed":9}}', CreatedAt: '2026-06-08 12:01:00' },
+            ])
+            .mockResolvedValueOnce([
+                { Source: 'PromptSyncJob', Message: 'legacy success', Detail: '{"sources":{"totalParsed":9}}', CreatedAt: '2026-06-08 12:01:00' },
+            ]);
+
+        const { getMonitoringStatus } = await import('@/lib/monitoring/status-service');
+        const payload = await getMonitoringStatus({
+            health: {
+                status: 'healthy',
+                timestamp: '2026-06-08T12:00:00.000Z',
+                version: '0.1.0',
+                database: { status: 'ok', prompts: 1 },
+                articleSources: { status: 'ok', articles: 1 },
+            },
+        });
+
+        const promptSync = payload.jobs.find((job) => job.key === 'promptSync');
+        expect(promptSync?.latestRun.status).toBe('success');
+        expect(promptSync?.today.successRuns).toBe(1);
+    });
+
     it('filters local development revalidation noise from recent logs', async () => {
         mockQuery
             .mockResolvedValueOnce([

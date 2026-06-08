@@ -91,9 +91,9 @@ function normalizeSummaryValue(value: unknown): number | string | boolean | null
     return JSON.stringify(value);
 }
 
-function normalizeRunStatus(value: unknown): MonitoringRunStatus {
+function normalizeRunStatus(value: unknown, fallback: MonitoringRunStatus = 'none'): MonitoringRunStatus {
     if (value === 'success' || value === 'warning' || value === 'error') return value;
-    return 'none';
+    return fallback;
 }
 
 function calculateDurationMs(startedAt: string | null | undefined, finishedAt: string | null | undefined): number | null {
@@ -153,7 +153,7 @@ function applyLatestJobRows(jobMap: Map<string, MonitoringJobSnapshot>, rows: Jo
         const startedAt = detail?.startedAt ?? null;
         const finishedAt = detail?.finishedAt ?? row.CreatedAt ?? null;
         snapshot.latestRun = {
-            status: snapshot.locked ? 'running' : normalizeRunStatus(detail?.status),
+            status: snapshot.locked ? 'running' : normalizeRunStatus(detail?.status, 'success'),
             startedAt,
             finishedAt,
             durationMs: calculateDurationMs(startedAt, finishedAt),
@@ -173,7 +173,7 @@ function applyDailyJobRows(jobMap: Map<string, MonitoringJobSnapshot>, rows: Dai
         if (!snapshot) continue;
 
         const detail = parseJobDetail(row.Detail);
-        const status = normalizeRunStatus(detail?.status);
+        const status = normalizeRunStatus(detail?.status, 'success');
         snapshot.today.totalRuns += 1;
         if (status === 'success') snapshot.today.successRuns += 1;
         if (status === 'warning') snapshot.today.warningRuns += 1;
