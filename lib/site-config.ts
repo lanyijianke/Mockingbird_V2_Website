@@ -65,3 +65,15 @@ export function buildAbsoluteUrl(pathOrUrl: string): string {
 
     return new URL(pathOrUrl, `${getSiteUrl()}/`).toString();
 }
+
+export function buildInternalUrl(pathOrUrl: string): string {
+    if (/^https?:\/\//.test(pathOrUrl)) {
+        return pathOrUrl;
+    }
+
+    const baseUrl = process.env.NODE_ENV !== 'production'
+        ? DEFAULT_SITE_URL
+        : getSiteUrl();
+
+    return new URL(pathOrUrl, `${baseUrl}/`).toString();
+}

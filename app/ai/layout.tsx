@@ -3,6 +3,7 @@ import '@/app/_styles/shared-ui.css';
 import '@/app/_styles/articles-list.css';
 import '@/app/_styles/prompts.css';
 import '@/app/_styles/agent-assets.css';
+import '@/app/_styles/admin-status.css';
 
 export default function AiLayout({ children }: { children: React.ReactNode }) {
   return children;

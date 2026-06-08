@@ -3,8 +3,26 @@ import { getSiteBrandConfig } from '@/lib/site-config';
 
 export const runtime = 'nodejs';
 
-// GET /api/health — 增强版健康检查
-export async function GET() {
+export interface HealthSnapshot {
+    status: string;
+    service: string;
+    timestamp: string;
+    version: string;
+    database: {
+        status: string;
+        prompts: number;
+    };
+    articleSources: {
+        status: string;
+        articles: number;
+    };
+    scheduler: {
+        running: boolean;
+        jobs: Array<{ name: string; interval: string; locked: boolean }>;
+    };
+}
+
+export async function getHealthSnapshot(): Promise<HealthSnapshot> {
     const siteConfig = getSiteBrandConfig();
     const [{ queryScalar }, { getTotalCount: getArticleCount }, { getSchedulerStatus }] = await Promise.all([
         import('@/lib/db'),
@@ -31,7 +49,7 @@ export async function GET() {
 
     const scheduler = getSchedulerStatus();
 
-    return NextResponse.json({
+    return {
         status: dbStatus === 'ok' && articleSourcesStatus === 'ok' ? 'healthy' : 'degraded',
         service: siteConfig.serviceName,
         timestamp: new Date().toISOString(),
@@ -48,5 +66,10 @@ export async function GET() {
             running: scheduler.running,
             jobs: scheduler.jobs,
         },
-    });
+    };
+}
+
+// GET /api/health — 增强版健康检查
+export async function GET() {
+    return NextResponse.json(await getHealthSnapshot());
 }
