@@ -21,9 +21,10 @@ vi.mock('@/lib/services/article-service', () => ({
 }));
 
 vi.mock('@/app/articles/[slug]/ArticleReaderClient', () => ({
-    default: ({ articleUrl }: { articleUrl: string }) => React.createElement('div', {
+    default: ({ articleUrl, backHref }: { articleUrl: string; backHref: string }) => React.createElement('div', {
         'data-testid': 'article-reader',
         'data-article-url': articleUrl,
+        'data-back-href': backHref,
     }),
 }));
 
@@ -92,5 +93,34 @@ describe('AI article detail page', () => {
         }));
 
         expect(html).toContain('data-article-url="https://zgnknowledge.online/ai/articles/agent-workflow"');
+    });
+
+    it('preserves the originating article list filter and anchor in the back link', async () => {
+        const { default: AiArticleDetailPage } = await import('@/app/ai/articles/[slug]/page');
+
+        const html = renderToStaticMarkup(await AiArticleDetailPage({
+            params: Promise.resolve({ slug: 'agent-workflow' }),
+            searchParams: Promise.resolve({
+                returnTo: '/ai/articles?category=agents&q=workflow#article-agent-workflow',
+            }),
+        }));
+
+        expect(html).toContain(
+            'data-back-href="/ai/articles?category=agents&amp;q=workflow#article-agent-workflow"'
+        );
+    });
+
+    it('falls back to the plain article list when returnTo is not an article list URL', async () => {
+        const { default: AiArticleDetailPage } = await import('@/app/ai/articles/[slug]/page');
+
+        const html = renderToStaticMarkup(await AiArticleDetailPage({
+            params: Promise.resolve({ slug: 'agent-workflow' }),
+            searchParams: Promise.resolve({
+                returnTo: 'https://example.com/ai/articles?category=agents#article-agent-workflow',
+            }),
+        }));
+
+        expect(html).toContain('data-back-href="/ai/articles"');
+        expect(html).not.toContain('example.com');
     });
 });

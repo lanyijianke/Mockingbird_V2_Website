@@ -79,6 +79,7 @@ describe('prompt detail related cards layout', () => {
                 images: [],
                 content: 'You are a helpful assistant.',
                 videoUrl: null,
+                backHref: '/ai/prompts?category=gpt-image-2',
                 title: 'Prompt Title',
                 categoryName: '图像生成',
                 description: 'Prompt description',
@@ -106,6 +107,7 @@ describe('prompt detail related cards layout', () => {
         expect(html).toContain('延伸探索');
         expect(html).toContain('浏览更多提示词分类');
         expect(html).toContain('查看 ProductHunt 热榜');
+        expect(html).toContain('href="/ai/prompts?category=gpt-image-2"');
     });
 
     it('links prompt exploration back to the filterable prompt list instead of SEO category pages', async () => {
@@ -118,13 +120,34 @@ describe('prompt detail related cards layout', () => {
         expect(html).not.toContain('href="/ai/prompts/categories/gemini-3"');
     });
 
-    it('deduplicates prompt detail loads across metadata and page render', async () => {
+    it('preserves the originating prompt list filter in the floating back link', async () => {
+        const { default: PromptDetailPage } = await import('@/app/ai/prompts/[id]/page');
+        const html = renderToStaticMarkup(await PromptDetailPage({
+            params: Promise.resolve({ id: '42' }),
+            searchParams: Promise.resolve({ returnTo: '/ai/prompts?category=seedance-2&q=ceo' }),
+        }));
+
+        expect(html).toContain('href="/ai/prompts?category=seedance-2&amp;q=ceo"');
+    });
+
+    it('falls back to the prompt category when returnTo is not a prompt list URL', async () => {
+        const { default: PromptDetailPage } = await import('@/app/ai/prompts/[id]/page');
+        const html = renderToStaticMarkup(await PromptDetailPage({
+            params: Promise.resolve({ id: '42' }),
+            searchParams: Promise.resolve({ returnTo: 'https://example.com/ai/prompts?category=seedance-2' }),
+        }));
+
+        expect(html).toContain('href="/ai/prompts?category=gemini-3"');
+        expect(html).not.toContain('example.com');
+    });
+
+    it('reloads prompt detail data across metadata and page render so ISR does not retain stale rows', async () => {
         const { default: PromptDetailPage, generateMetadata } = await import('@/app/ai/prompts/[id]/page');
 
         await generateMetadata({ params: Promise.resolve({ id: '42' }) });
         await PromptDetailPage({ params: Promise.resolve({ id: '42' }) });
 
-        expect(mockGetPromptById).toHaveBeenCalledTimes(1);
+        expect(mockGetPromptById).toHaveBeenCalledTimes(2);
     });
 
     it('prebuilds DB-backed prompt detail pages from prompt ids for ISR', async () => {

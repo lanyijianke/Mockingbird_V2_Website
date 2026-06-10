@@ -1,10 +1,13 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import {
-    getArticleDetailPath,
-    getArticleListPath,
-} from '@/lib/articles/article-route-paths';
+import { getArticleListPath } from '@/lib/articles/article-route-paths';
 import { buildArticlesMetadata } from '@/lib/seo/metadata';
+import ListScrollRestoration from '../ListScrollRestoration';
+import {
+    buildArticleCardAnchorId,
+    buildArticleDetailHref,
+    buildArticleListReturnUrl,
+} from './article-list-return';
 
 export const runtime = 'nodejs';
 export const revalidate = 300;
@@ -67,6 +70,7 @@ export default async function AiArticlesPage({
     const category = normalizeCategory(params.category, categoryCodes);
     const q = normalizeSearchQuery(params.q);
     const result = await getPagedArticles(page, 10, category, q, { site: 'ai' });
+    const returnTo = buildArticleListReturnUrl({ page, category, q });
 
     function buildPageUrl(p: number) {
         const parts: string[] = [];
@@ -79,6 +83,8 @@ export default async function AiArticlesPage({
 
     return (
         <div className="articles-page">
+            <ListScrollRestoration />
+
             <nav className="breadcrumb">
                 <Link href="/" className="crumb-link">
                     <i className="bi bi-house-door" /> 首页
@@ -126,51 +132,56 @@ export default async function AiArticlesPage({
 
             {result.items.length > 0 ? (
                 <div className="articles-list">
-                    {result.items.map((article, i) => (
-                        <div
-                            key={article.id}
-                            className="animate-emerge"
-                            style={{ animationDelay: `${(i * 0.1).toFixed(1)}s` }}
-                        >
-                            <Link
-                                href={getArticleDetailPath('ai', article.slug)}
-                                className="article-item glass glass-card"
+                    {result.items.map((article, i) => {
+                        const anchorId = buildArticleCardAnchorId(article.slug);
+
+                        return (
+                            <div
+                                key={article.id}
+                                id={anchorId}
+                                className="animate-emerge"
+                                style={{ animationDelay: `${(i * 0.1).toFixed(1)}s` }}
                             >
-                                <div className="article-cover">
-                                    <Image
-                                        src={article.coverUrl || '/images/default-cover.png'}
-                                        alt={article.title}
-                                        fill
-                                        sizes="(max-width: 768px) 100vw, 320px"
-                                        style={{ objectFit: 'cover' }}
-                                    />
-                                </div>
-                                <div className="article-info">
-                                    <div className="article-meta">
-                                        <span className="category">{article.categoryName}</span>
-                                        <span className="dot">·</span>
-                                        <span className="date">
-                                            {new Date(article.createdAt).toLocaleDateString('zh-CN', {
-                                                timeZone: 'Asia/Shanghai',
-                                            })}
-                                        </span>
+                                <Link
+                                    href={buildArticleDetailHref(article.slug, returnTo, anchorId)}
+                                    className="article-item glass glass-card"
+                                >
+                                    <div className="article-cover">
+                                        <Image
+                                            src={article.coverUrl || '/images/default-cover.png'}
+                                            alt={article.title}
+                                            fill
+                                            sizes="(max-width: 768px) 100vw, 320px"
+                                            style={{ objectFit: 'cover' }}
+                                        />
                                     </div>
-                                    <h2 className="article-title">{article.title}</h2>
-                                    <p className="article-summary">{article.summary}</p>
-                                    <div className="article-footer">
-                                        <span className="read-more">
-                                            阅读全文 <i className="bi bi-arrow-right" />
-                                        </span>
-                                        {typeof article.viewCount === 'number' && (
-                                            <span className="views">
-                                                <i className="bi bi-eye" /> {article.viewCount.toLocaleString()}
+                                    <div className="article-info">
+                                        <div className="article-meta">
+                                            <span className="category">{article.categoryName}</span>
+                                            <span className="dot">·</span>
+                                            <span className="date">
+                                                {new Date(article.createdAt).toLocaleDateString('zh-CN', {
+                                                    timeZone: 'Asia/Shanghai',
+                                                })}
                                             </span>
-                                        )}
+                                        </div>
+                                        <h2 className="article-title">{article.title}</h2>
+                                        <p className="article-summary">{article.summary}</p>
+                                        <div className="article-footer">
+                                            <span className="read-more">
+                                                阅读全文 <i className="bi bi-arrow-right" />
+                                            </span>
+                                            {typeof article.viewCount === 'number' && (
+                                                <span className="views">
+                                                    <i className="bi bi-eye" /> {article.viewCount.toLocaleString()}
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            </Link>
-                        </div>
-                    ))}
+                                </Link>
+                            </div>
+                        );
+                    })}
                 </div>
             ) : (
                 <div className="empty-state glass">

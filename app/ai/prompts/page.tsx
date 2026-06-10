@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getSubcategories } from '@/lib/categories';
 import { buildPromptsMetadata } from '@/lib/seo/metadata';
+import ListScrollRestoration from '../ListScrollRestoration';
 import PromptInfiniteGallery from './PromptInfiniteGallery';
 import { buildPromptGalleryResetKey } from './infinite-gallery-utils';
 
@@ -69,6 +70,8 @@ export default async function PromptsPage({
 
     return (
         <div className="prompts-page">
+            <ListScrollRestoration />
+
             {/* 粘性搜索栏 */}
             <div className="prompts-sticky-header">
                 <form method="get" action="/ai/prompts" className="prompts-search-bar">

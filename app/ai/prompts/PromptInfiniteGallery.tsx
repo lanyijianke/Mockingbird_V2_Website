@@ -5,7 +5,10 @@ import type { Prompt, PagedResult } from '@/lib/types';
 import { getCategoryName } from '@/lib/categories';
 import PromptGalleryCard from './PromptGalleryCard';
 import {
+    buildPromptCardAnchorId,
+    buildPromptDetailHref,
     buildPromptGalleryResetKey,
+    buildPromptListReturnUrl,
     buildPromptPageApiUrl,
     hasNextPromptPage,
 } from './infinite-gallery-utils';
@@ -40,6 +43,7 @@ export default function PromptInfiniteGallery({
     const sentinelRef = useRef<HTMLDivElement | null>(null);
     const loadingRef = useRef(false);
     const resetKey = buildPromptGalleryResetKey({ category, q });
+    const returnTo = buildPromptListReturnUrl({ category, q });
 
     const canLoadMore = hasNextPromptPage(page, totalPages);
 
@@ -110,19 +114,24 @@ export default function PromptInfiniteGallery({
     return (
         <>
             <div className="prompts-masonry">
-                {items.map((prompt, idx) => (
-                    <PromptGalleryCard
-                        key={prompt.id}
-                        href={`/ai/prompts/${prompt.id}`}
-                        title={prompt.title}
-                        categoryName={getCategoryName(prompt.category)}
-                        copyCount={prompt.copyCount}
-                        coverImageUrl={prompt.coverImageUrl}
-                        cardPreviewVideoUrl={prompt.cardPreviewVideoUrl}
-                        videoPreviewUrl={prompt.videoPreviewUrl}
-                        animationDelay={`${idx * 0.04}s`}
-                    />
-                ))}
+                {items.map((prompt, idx) => {
+                    const anchorId = buildPromptCardAnchorId(prompt.id);
+
+                    return (
+                        <PromptGalleryCard
+                            key={prompt.id}
+                            anchorId={anchorId}
+                            href={buildPromptDetailHref(prompt.id, returnTo, anchorId)}
+                            title={prompt.title}
+                            categoryName={getCategoryName(prompt.category)}
+                            copyCount={prompt.copyCount}
+                            coverImageUrl={prompt.coverImageUrl}
+                            cardPreviewVideoUrl={prompt.cardPreviewVideoUrl}
+                            videoPreviewUrl={prompt.videoPreviewUrl}
+                            animationDelay={`${idx * 0.04}s`}
+                        />
+                    );
+                })}
             </div>
 
             <div ref={sentinelRef} className="prompts-infinite-status" aria-live="polite">

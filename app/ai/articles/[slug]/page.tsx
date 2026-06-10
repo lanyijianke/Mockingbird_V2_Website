@@ -14,6 +14,7 @@ import {
 import { buildAbsoluteUrl } from '@/lib/site-config';
 import { renderArticleMarkdown } from '@/lib/articles/render-markdown';
 import ArticleReaderClient from '@/app/articles/[slug]/ArticleReaderClient';
+import { normalizeArticleReturnTo } from '../article-list-return';
 import '@/app/articles/[slug]/article-reader.css';
 
 export const runtime = 'nodejs';
@@ -53,8 +54,10 @@ function estimateReadingMinutes(content: string): number {
 
 export default async function AiArticleDetailPage({
     params,
+    searchParams,
 }: {
     params: Promise<{ slug: string }>;
+    searchParams?: Promise<{ returnTo?: string }>;
 }) {
     const { getArticleBySlug, getRelatedArticles } = await import('@/lib/services/article-service');
     const { slug } = await params;
@@ -75,6 +78,8 @@ export default async function AiArticleDetailPage({
     const { toc, renderedHtml } = await renderArticleMarkdown(content);
     const articleUrl = getArticleDetailPath('ai', slug);
     const articleShareUrl = buildAbsoluteUrl(articleUrl);
+    const returnParams = await searchParams;
+    const backHref = normalizeArticleReturnTo(returnParams?.returnTo) || getArticleListPath('ai');
     const explorationLinks = [
         {
             href: `${getArticleListPath('ai')}?category=${encodeURIComponent(article.category)}`,
@@ -113,7 +118,7 @@ export default async function AiArticleDetailPage({
                 readingMinutes={readingMinutes}
                 summary={article.summary ?? ''}
                 articleUrl={articleShareUrl}
-                backHref={getArticleListPath('ai')}
+                backHref={backHref}
                 relatedArticles={relatedArticles.map((item) => ({
                     href: getArticleDetailPath('ai', item.slug),
                     slug: item.slug,

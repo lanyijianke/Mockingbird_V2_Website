@@ -182,6 +182,119 @@ video prompt body
         ]);
     });
 
+    it('resolves Seedance watch links through YouMind video prompt metadata when README only has a Twitter thumbnail', async () => {
+        const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+            const body = JSON.parse(String(init?.body || '{}'));
+            expect(body).toMatchObject({
+                model: 'seedance-2.0',
+                page: 1,
+                limit: 100,
+                locale: 'zh-CN',
+            });
+
+            return {
+                ok: true,
+                json: async () => ({
+                    prompts: [
+                        {
+                            id: 5782,
+                            videos: [
+                                {
+                                    streamId: 'abc123stream',
+                                    sourceUrl: 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/abc123stream/watch',
+                                    thumbnail: 'https://customer-qs6wnyfuv0gcybzj.cloudflarestream.com/abc123stream/thumbnails/thumbnail.jpg',
+                                    caption: 'Imported from URL: https://video.twimg.com/amplify_video/2063728826056941568/vid/avc1/1280x720/example.mp4?tag=21',
+                                },
+                            ],
+                        },
+                    ],
+                    hasMore: false,
+                }),
+            };
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        const readme = `
+### 优雅武侠茶馆对决动画
+
+#### 📝 提示词
+
+\`\`\`
+节奏快但动作极其优雅，夸张而优美的物理效果。
+\`\`\`
+
+<img src="https://pbs.twimg.com/amplify_video_thumb/2063728826056941568/img/_XzrCFGU1tKHZNlP.jpg" width="600" alt="优雅武侠茶馆对决动画">
+
+**[🎬 观看视频 →](https://youmind.com/zh-CN/seedance-2-0-prompts?id=5782)**
+
+**作者:** [BMX](https://x.com/bmx_ai13) | **来源:** [Link](https://x.com/bmx_ai13/status/2063753871554687070) | **发布时间:** Jun 7, 2026
+`;
+
+        const records = await githubReadmeYouMindAdapter.parse(readme, {
+            id: 'yoomind-seedance-2',
+            type: 'github-readme',
+            owner: 'YouMind-OpenLab',
+            repo: 'awesome-seedance-2-prompts',
+            branch: 'main',
+            file: 'README_zh.md',
+            rawUrlTemplate: 'https://example.invalid/{owner}/{repo}/{branch}/{file}',
+            repoUrlTemplate: 'https://repos.example.invalid/{owner}/{repo}',
+            adapter: 'github-readme-yoomind',
+            locale: 'zh-CN',
+            defaultCategory: 'seedance-2',
+            enabled: true,
+        });
+
+        expect(records[0].videoUrls).toEqual([
+            'https://video.twimg.com/amplify_video/2063728826056941568/vid/avc1/1280x720/example.mp4?tag=21',
+        ]);
+    });
+
+    it('falls back to the original X post for Seedance watch links when YouMind metadata no longer contains the watch id', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => ({
+            ok: true,
+            json: async () => ({
+                prompts: [],
+                hasMore: false,
+            }),
+        })));
+
+        const readme = `
+### 90 年代迪士尼风格动画项目
+
+#### 📝 提示词
+
+\`\`\`
+老虎大声咯咯笑，试图抓住树枝但正慢慢滑落。
+\`\`\`
+
+<img src="https://pbs.twimg.com/amplify_video_thumb/2063748658030432257/img/sTd0u8MJvU-GwUIV.jpg" width="600" alt="90 年代迪士尼风格动画项目">
+
+**[🎬 观看视频 →](https://youmind.com/zh-CN/seedance-2-0-prompts?id=5795)**
+
+**作者:** [migrok](https://x.com/migrok293703) | **来源:** [Link](https://x.com/migrok293703/status/2063749025870778415) | **发布时间:** Jun 7, 2026
+`;
+
+        const records = await githubReadmeYouMindAdapter.parse(readme, {
+            id: 'yoomind-seedance-2',
+            type: 'github-readme',
+            owner: 'YouMind-OpenLab',
+            repo: 'awesome-seedance-2-prompts',
+            branch: 'main',
+            file: 'README_zh.md',
+            rawUrlTemplate: 'https://example.invalid/{owner}/{repo}/{branch}/{file}',
+            repoUrlTemplate: 'https://repos.example.invalid/{owner}/{repo}',
+            adapter: 'github-readme-yoomind',
+            locale: 'zh-CN',
+            defaultCategory: 'seedance-2',
+            enabled: true,
+        });
+
+        expect(records[0].videoUrls).toEqual([
+            'https://x.com/migrok293703/status/2063749025870778415',
+        ]);
+    });
+
     it('parses GPT Image 2 Chinese README sections into normalized import records', async () => {
         const readme = `
 ### No. 1: 个人资料 / 头像 - 毛茸茸蓝眼小猫的影棚肖像

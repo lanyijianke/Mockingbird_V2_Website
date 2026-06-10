@@ -14,6 +14,7 @@ interface PromptGalleryCardProps {
     title: string;
     categoryName: string;
     copyCount: number;
+    anchorId?: string;
     coverImageUrl?: string | null;
     cardPreviewVideoUrl?: string | null;
     videoPreviewUrl?: string | null;
@@ -25,6 +26,7 @@ export default function PromptGalleryCard({
     title,
     categoryName,
     copyCount,
+    anchorId,
     coverImageUrl,
     cardPreviewVideoUrl,
     videoPreviewUrl,
@@ -96,6 +98,7 @@ export default function PromptGalleryCard({
 
     return (
         <Link
+            id={anchorId}
             href={href}
             className="prompt-card-v2"
             style={animationDelay ? { animationDelay } : undefined}

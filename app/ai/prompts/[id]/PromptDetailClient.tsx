@@ -23,6 +23,7 @@ interface PromptDetailClientProps {
     images: string[];
     content: string;
     videoUrl?: string | null;
+    backHref: string;
     title: string;
     categoryName: string;
     description: string;
@@ -49,6 +50,7 @@ export default function PromptDetailClient({
     images,
     content,
     videoUrl,
+    backHref,
     title,
     categoryName,
     description,
@@ -84,7 +86,7 @@ export default function PromptDetailClient({
     return (
         <div className="pd-container">
             {/* 浮动返回按钮 */}
-            <Link href="/ai/prompts" className="pd-back-float">
+            <Link href={backHref} className="pd-back-float">
                 <i className="bi bi-arrow-left" />
             </Link>
 

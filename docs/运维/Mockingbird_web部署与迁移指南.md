@@ -179,7 +179,7 @@ KNOWLEDGE_PROMPT_MEDIA_R2_PUBLIC_BASE_URL=https://assets.zgnknowledge.online/pro
 相关手册：
 
 - `docs/运维/R2文章状态机与发布流程.md`
-- `docs/运维/R2提示词媒体迁移与修复.md`
+- `docs/运维/R2提示词媒体迁移与修复.md`：提示词媒体迁移、Seedance 视频回填、批量补库后的页面 revalidate 与缓存排障。
 
 ## 6. 标准发布流程
 

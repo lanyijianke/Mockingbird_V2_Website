@@ -19,9 +19,6 @@ export const revalidate = 3600;
 type PromptService = typeof import('@/lib/services/prompt-service');
 type PromptDetail = Awaited<ReturnType<PromptService['getPromptById']>>;
 
-// Reuse prompt detail reads while a static build worker renders metadata + page for the same id.
-const promptDetailLoads = new Map<number, Promise<PromptDetail>>();
-
 export async function generateStaticParams() {
     const { getAllPromptIds } = await import('@/lib/services/prompt-service');
     const ids = await getAllPromptIds();
@@ -42,15 +39,23 @@ function parsePromptId(id: string): number | null {
     return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
+function normalizePromptReturnTo(value: string | undefined): string | null {
+    if (!value) return null;
+
+    try {
+        const parsed = new URL(value, 'https://zgnknowledge.online');
+        if (parsed.origin !== 'https://zgnknowledge.online') return null;
+        if (parsed.pathname !== '/ai/prompts') return null;
+
+        return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    } catch {
+        return null;
+    }
+}
+
 async function getPromptDetail(promptId: number): Promise<PromptDetail> {
-    const existing = promptDetailLoads.get(promptId);
-    if (existing) return existing;
-
-    const load = import('@/lib/services/prompt-service')
-        .then(({ getPromptById }) => getPromptById(promptId));
-
-    promptDetailLoads.set(promptId, load);
-    return load;
+    const { getPromptById } = await import('@/lib/services/prompt-service');
+    return getPromptById(promptId);
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
@@ -76,8 +81,10 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function PromptDetailPage({
     params,
+    searchParams,
 }: {
     params: Promise<{ id: string }>;
+    searchParams?: Promise<{ returnTo?: string }>;
 }) {
     const { getRelatedPrompts } = await import('@/lib/services/prompt-service');
     const { id } = await params;
@@ -109,6 +116,8 @@ export default async function PromptDetailPage({
         day: 'numeric',
     });
     const promptListCategoryHref = `/ai/prompts?category=${encodeURIComponent(prompt.category)}`;
+    const returnParams = await searchParams;
+    const backHref = normalizePromptReturnTo(returnParams?.returnTo) || promptListCategoryHref;
     const explorationLinks = [
         {
             href: promptListCategoryHref,
@@ -140,6 +149,7 @@ export default async function PromptDetailPage({
                 images={images}
                 content={prompt.content}
                 videoUrl={prompt.videoPreviewUrl}
+                backHref={backHref}
                 title={prompt.title}
                 categoryName={getCategoryName(prompt.category)}
                 description={prompt.description || ''}

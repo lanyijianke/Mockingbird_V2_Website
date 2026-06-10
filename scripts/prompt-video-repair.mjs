@@ -10,6 +10,10 @@ import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 
 const DEFAULT_PUBLIC_BASE = 'https://assets.zgnknowledge.online/prompts/media';
 const DEFAULT_R2_PREFIX = 'prompts/media';
+const YOUMIND_VIDEO_PROMPTS_ENDPOINT = 'https://youmind.com/youmarketing-api/video-prompts';
+const YOUMIND_VIDEO_MODEL_BY_CATEGORY = {
+    'seedance-2': 'seedance-2.0',
+};
 
 function parseArgs(argv) {
     const [command, ...rest] = argv;
@@ -20,6 +24,15 @@ function parseArgs(argv) {
         options[key] = valueParts.length > 0 ? valueParts.join('=') : true;
     }
     return options;
+}
+
+function parsePositiveInt(value, fallback) {
+    const parsed = Number.parseInt(String(value || ''), 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function isTruthyOption(value) {
+    return value === true || value === 'true' || value === '1' || value === 'yes';
 }
 
 async function loadEnvFile(filePath) {
@@ -75,6 +88,59 @@ function getPublicBaseUrl() {
     return (process.env.KNOWLEDGE_PROMPT_MEDIA_R2_PUBLIC_BASE_URL || DEFAULT_PUBLIC_BASE).replace(/\/+$/g, '');
 }
 
+function getSiteUrl() {
+    return (process.env.SITE_URL || 'http://localhost:5046').replace(/\/+$/g, '');
+}
+
+function getAdminToken() {
+    return process.env.KNOWLEDGE_ADMIN_TOKEN?.trim() || process.env.ADMIN_API_TOKEN?.trim() || '';
+}
+
+async function requestPromptRevalidation(repairedPromptIds, options) {
+    if (!isTruthyOption(options.revalidate)) return null;
+
+    const token = getAdminToken();
+    if (!token) {
+        return { ok: false, status: null, error: 'admin token is not configured' };
+    }
+
+    const siteUrl = String(options['site-url'] || getSiteUrl()).replace(/\/+$/g, '');
+    const shouldRevalidateDetails = isTruthyOption(options['revalidate-details']);
+    const events = [{ type: 'prompt', action: 'manual' }];
+    if (shouldRevalidateDetails) {
+        for (const id of repairedPromptIds) events.push({ type: 'prompt', action: 'update', id });
+    }
+
+    const results = [];
+    for (const event of events) {
+        try {
+            const response = await fetch(`${siteUrl}/api/revalidate/content`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-admin-token': token,
+                },
+                body: JSON.stringify(event),
+                signal: AbortSignal.timeout(60_000),
+            });
+            results.push({
+                event,
+                ok: response.ok,
+                status: response.status,
+                body: await response.text(),
+            });
+        } catch (err) {
+            results.push({ event, ok: false, status: null, error: String(err) });
+        }
+    }
+
+    return {
+        ok: results.every((result) => result.ok),
+        siteUrl,
+        results,
+    };
+}
+
 function renderTemplate(template, source) {
     return template.replace(/\{(owner|repo|branch|file)\}/g, (_match, key) => encodeURIComponent(source[key] || (key === 'branch' ? 'main' : '')));
 }
@@ -116,12 +182,83 @@ function inferCloudflareVideoDownloadUrl(imageUrl) {
     }
 }
 
-function extractVideoUrls(section, imageUrls) {
+function buildCloudflareStreamDownloadUrl(streamId, customerCode) {
+    if (!streamId) return null;
+    const normalizedStreamId = streamId.trim();
+    if (!normalizedStreamId) return null;
+
+    try {
+        const parsed = new URL(normalizedStreamId);
+        if (parsed.hostname.endsWith('cloudflarestream.com')) {
+            const streamMatch = parsed.pathname.match(/^\/([^/]+)(?:\/|$)/);
+            return streamMatch ? `https://${parsed.hostname}/${streamMatch[1]}/downloads/default.mp4` : null;
+        }
+        if (parsed.hostname.endsWith('videodelivery.net')) {
+            const streamMatch = parsed.pathname.match(/^\/([^/]+)(?:\/|$)/);
+            return streamMatch ? `https://videodelivery.net/${streamMatch[1]}/downloads/default.mp4` : null;
+        }
+    } catch {
+        // streamId is usually an opaque Cloudflare Stream id, not a full URL.
+    }
+
+    return customerCode
+        ? `https://customer-${customerCode}.cloudflarestream.com/${normalizedStreamId}/downloads/default.mp4`
+        : `https://videodelivery.net/${normalizedStreamId}/downloads/default.mp4`;
+}
+
+function extractMp4Url(value) {
+    if (!value) return null;
+    return value.match(/https?:\/\/[^\s"')]+\.mp4(?:\?[^\s"')]+)?/i)?.[0] || null;
+}
+
+function inferCustomerCodeFromCloudflareUrl(value) {
+    if (!value) return undefined;
+    try {
+        const parsed = new URL(value);
+        return parsed.hostname.match(/^customer-([^.]+)\.cloudflarestream\.com$/i)?.[1];
+    } catch {
+        return undefined;
+    }
+}
+
+function resolveYouMindVideoUrl(media) {
+    const directUrl = extractMp4Url(media?.sourceUrl) || extractMp4Url(media?.caption);
+    if (directUrl) return directUrl;
+    return buildCloudflareStreamDownloadUrl(
+        media?.streamId || '',
+        media?.customerCode || inferCustomerCodeFromCloudflareUrl(media?.sourceUrl) || inferCustomerCodeFromCloudflareUrl(media?.thumbnail)
+    );
+}
+
+function extractDirectVideoUrls(section) {
     const htmlLinks = [...section.matchAll(/<a\s[^>]*href=["'](.*?\.mp4(?:\?[^"']*)?)["'][^>]*>/gi)].map((match) => match[1].trim());
     const plainLinks = [...section.matchAll(/https?:\/\/[^\s"')]+\.mp4(?:\?[^\s"')]+)?/gi)].map((match) => match[0].trim());
-    const direct = [...new Set([...htmlLinks, ...plainLinks])];
+    return [...new Set([...htmlLinks, ...plainLinks])];
+}
+
+function extractYouMindWatchIds(section) {
+    return [...section.matchAll(/https?:\/\/(?:www\.)?youmind\.com\/[^\s"')]+[?&]id=(\d+)/gi)]
+        .map((match) => Number.parseInt(match[1], 10))
+        .filter((id) => Number.isFinite(id) && id > 0)
+        .filter((id, index, ids) => ids.indexOf(id) === index);
+}
+
+function extractVideoUrls(section, imageUrls, youmindVideos = new Map(), fallbackUrl) {
+    const direct = extractDirectVideoUrls(section);
     if (direct.length > 0) return direct;
-    return imageUrls.map(inferCloudflareVideoDownloadUrl).filter(Boolean);
+
+    const cloudflare = imageUrls.map(inferCloudflareVideoDownloadUrl).filter(Boolean);
+    if (cloudflare.length > 0) return cloudflare;
+
+    const watchIds = extractYouMindWatchIds(section);
+    const youmindUrls = watchIds.map((id) => youmindVideos.get(id)).filter(Boolean);
+    if (youmindUrls.length > 0) return youmindUrls;
+
+    if (watchIds.length > 0 && fallbackUrl && /^https?:\/\/(?:www\.)?(?:x|twitter)\.com\//i.test(fallbackUrl)) {
+        return [fallbackUrl];
+    }
+
+    return [];
 }
 
 function extractSourceUrl(section) {
@@ -129,7 +266,57 @@ function extractSourceUrl(section) {
     return linked?.[1]?.trim();
 }
 
-function parseYouMindRecords(readme, source) {
+function needsYouMindVideoLookup(source, readme) {
+    return Boolean(YOUMIND_VIDEO_MODEL_BY_CATEGORY[source.defaultCategory]) && /youmind\.com\/[^\s"')]+[?&]id=\d+/i.test(readme);
+}
+
+async function fetchYouMindVideoMap(source) {
+    const model = YOUMIND_VIDEO_MODEL_BY_CATEGORY[source.defaultCategory];
+    if (!model) return new Map();
+
+    const locale = source.locale || 'zh-CN';
+    const videoMap = new Map();
+    let page = 1;
+    let hasMore = true;
+
+    while (hasMore && page <= 50) {
+        const response = await fetch(YOUMIND_VIDEO_PROMPTS_ENDPOINT, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0',
+            },
+            body: JSON.stringify({ model, page, limit: 100, locale }),
+        });
+        if (!response.ok) break;
+
+        const payload = await response.json();
+        for (const prompt of payload.prompts || []) {
+            const promptId = typeof prompt.id === 'number' ? prompt.id : Number.parseInt(String(prompt.id || ''), 10);
+            if (!Number.isFinite(promptId) || promptId <= 0) continue;
+
+            const mediaCandidates = [
+                ...(prompt.videos || []),
+                prompt.media,
+                prompt,
+            ].filter(Boolean);
+            const videoUrl = mediaCandidates
+                .map((media) => resolveYouMindVideoUrl(media))
+                .find(Boolean);
+            if (videoUrl) videoMap.set(promptId, videoUrl);
+        }
+
+        hasMore = Boolean(payload.hasMore);
+        page++;
+    }
+
+    return videoMap;
+}
+
+async function parseYouMindRecords(readme, source) {
+    const youmindVideos = needsYouMindVideoLookup(source, readme)
+        ? await fetchYouMindVideoMap(source)
+        : new Map();
     const records = [];
     const sections = readme.split(/^###\s+/m).filter((section) => section.trim());
     for (const section of sections) {
@@ -141,11 +328,12 @@ function parseYouMindRecords(readme, source) {
         if (codeBlocks.length === 0) continue;
         const rawTitle = titleLine.replace(/^No\.\s*\d+:\s*/i, '').trim();
         const mediaUrls = extractImages(body);
-        const videoUrls = extractVideoUrls(body, mediaUrls);
+        const sourceUrl = extractSourceUrl(body);
+        const videoUrls = extractVideoUrls(body, mediaUrls, youmindVideos, sourceUrl);
         records.push({
             title: rawTitle || titleLine,
             rawTitle: rawTitle || titleLine,
-            sourceUrl: extractSourceUrl(body),
+            sourceUrl,
             videoUrls,
             body: stripMarkdown(body).slice(0, 500),
             category: source.defaultCategory,
@@ -247,6 +435,41 @@ async function uploadFile(client, bucket, key, filePath, contentType) {
     }));
 }
 
+async function downloadVideoWithYtDlp(url, outputPath) {
+    return new Promise((resolve, reject) => {
+        const child = spawn('yt-dlp', [
+            '--no-playlist',
+            '-f', 'best[height<=720]/best',
+            '--merge-output-format', 'mp4',
+            '--no-warnings',
+            '-o', outputPath,
+            url,
+        ], { stdio: ['ignore', 'pipe', 'pipe'] });
+        let stderr = '';
+        child.stderr.on('data', (chunk) => {
+            stderr += chunk.toString();
+        });
+        child.on('error', reject);
+        child.on('close', async (code) => {
+            if (code !== 0) return reject(new Error(stderr.trim() || `yt-dlp exited ${code}`));
+            try {
+                await fs.access(outputPath);
+                resolve(outputPath);
+            } catch {
+                reject(new Error('yt-dlp finished without output file'));
+            }
+        });
+    });
+}
+
+async function downloadVideoSource(url, filePath) {
+    if (/^https?:\/\/(?:www\.)?(?:x|twitter)\.com\//i.test(url)) {
+        return downloadVideoWithYtDlp(url, filePath);
+    }
+    await downloadToFile(url, filePath);
+    return filePath;
+}
+
 async function maybeCreatePreview(videoPath, previewPath) {
     return new Promise((resolve) => {
         const child = spawn('ffmpeg', ['-y', '-i', videoPath, '-t', '3', '-an', '-vf', 'scale=480:-2', previewPath], { stdio: 'ignore' });
@@ -270,7 +493,7 @@ async function apply(options) {
     const bucket = getBucket();
     const conn = await getConnection();
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'prompt-video-repair-'));
-    const report = { generatedAt: new Date().toISOString(), repaired: [], skipped: [], failed: [] };
+    const report = { generatedAt: new Date().toISOString(), repaired: [], skipped: [], failed: [], revalidation: null };
     try {
         for (const match of matches) {
             const videoFileName = stableFileName(match.videoUrl, '.mp4');
@@ -282,7 +505,7 @@ async function apply(options) {
             const previewKey = `${getR2Prefix()}/previews/${previewFileName}`;
             const previewPublicUrl = `${getPublicBaseUrl()}/previews/${previewFileName}`;
             try {
-                await downloadToFile(match.videoUrl, videoPath);
+                await downloadVideoSource(match.videoUrl, videoPath);
                 await uploadFile(client, bucket, videoKey, videoPath, 'video/mp4');
                 const hasPreview = await maybeCreatePreview(videoPath, previewPath);
                 if (hasPreview) await uploadFile(client, bucket, previewKey, previewPath, 'video/mp4');
@@ -309,9 +532,124 @@ async function apply(options) {
         await conn.end();
         await fs.rm(tempDir, { recursive: true, force: true });
     }
+    report.revalidation = await requestPromptRevalidation(report.repaired.map((item) => item.promptId), options);
     await fs.writeFile('/tmp/seedance-video-repair-report.json', JSON.stringify(report, null, 2));
     console.log(`apply complete repaired=${report.repaired.length} skipped=${report.skipped.length} failed=${report.failed.length}`);
+    if (report.revalidation) {
+        console.log(`revalidation ${report.revalidation.ok ? 'complete' : 'failed'} site=${report.revalidation.siteUrl || 'n/a'}`);
+    }
     if (report.failed.length > 0) process.exitCode = 1;
+}
+
+async function auditMissingX(options) {
+    const out = path.resolve(String(options.out || '/tmp/seedance-missing-x-video-audit.json'));
+    const limit = parsePositiveInt(options.limit, 2000);
+    const afterId = Number.parseInt(String(options['after-id'] || '0'), 10) || 0;
+    const includeGithub = isTruthyOption(options['include-github']);
+    const conn = await getConnection();
+    try {
+        const sourceCondition = includeGithub
+            ? `(SourceUrl REGEXP '^https?://(www\\\\.)?(x|twitter)\\\\.com/' OR SourceUrl LIKE 'https://github.com/%')`
+            : `SourceUrl REGEXP '^https?://(www\\\\.)?(x|twitter)\\\\.com/'`;
+        const [rows] = await conn.query(
+            `SELECT Id, RawTitle, SourceUrl, VideoPreviewUrl, CardPreviewVideoUrl
+             FROM Prompts
+             WHERE IsActive = 1
+               AND Category = 'seedance-2'
+               AND Id > ?
+               AND (VideoPreviewUrl IS NULL OR VideoPreviewUrl = '')
+               AND ${sourceCondition}
+             ORDER BY Id
+             LIMIT ?`,
+            [afterId, limit]
+        );
+        const result = {
+            generatedAt: new Date().toISOString(),
+            mode: includeGithub ? 'missing-seedance-x-or-github-source' : 'missing-seedance-x-source',
+            afterId,
+            limit,
+            count: rows.length,
+            lastId: rows.length > 0 ? rows[rows.length - 1].Id : null,
+            matches: rows.map((row) => ({
+                promptId: row.Id,
+                rawTitle: row.RawTitle,
+                sourceUrl: row.SourceUrl,
+                videoUrl: row.SourceUrl,
+                currentVideoPreviewUrl: row.VideoPreviewUrl,
+                currentCardPreviewVideoUrl: row.CardPreviewVideoUrl,
+                needsVideo: !row.VideoPreviewUrl,
+                needsCardPreview: !row.CardPreviewVideoUrl,
+            })),
+        };
+        await fs.writeFile(out, JSON.stringify(result, null, 2));
+        console.log(`audit-missing-x complete count=${result.count} lastId=${result.lastId ?? 'none'} out=${out}`);
+    } finally {
+        await conn.end();
+    }
+}
+
+async function auditMissingGithubByTitle(options) {
+    const sourceId = String(options.source || 'yoomind-seedance-2');
+    const out = path.resolve(String(options.out || '/tmp/seedance-missing-github-title-audit.json'));
+    const parsedRecords = (await fetchSourceRecords(sourceId)).filter((record) => record.videoUrls.length > 0);
+    const recordsByTitle = new Map();
+    const duplicateTitles = new Set();
+
+    for (const record of parsedRecords) {
+        const key = record.rawTitle.trim();
+        if (recordsByTitle.has(key)) duplicateTitles.add(key);
+        recordsByTitle.set(key, record);
+    }
+    for (const title of duplicateTitles) recordsByTitle.delete(title);
+
+    const conn = await getConnection();
+    try {
+        const [rows] = await conn.query(
+            `SELECT Id, RawTitle, SourceUrl, VideoPreviewUrl, CardPreviewVideoUrl
+             FROM Prompts
+             WHERE IsActive = 1
+               AND Category = 'seedance-2'
+               AND (VideoPreviewUrl IS NULL OR VideoPreviewUrl = '')
+               AND SourceUrl LIKE 'https://github.com/%'
+             ORDER BY Id`
+        );
+        const matches = [];
+        const unmatchedRows = [];
+        for (const row of rows) {
+            const record = recordsByTitle.get(String(row.RawTitle || '').trim());
+            if (!record) {
+                unmatchedRows.push({ promptId: row.Id, rawTitle: row.RawTitle, sourceUrl: row.SourceUrl });
+                continue;
+            }
+            matches.push({
+                promptId: row.Id,
+                rawTitle: row.RawTitle,
+                sourceUrl: row.SourceUrl,
+                matchedSourceUrl: record.sourceUrl,
+                videoUrl: record.videoUrls[0],
+                currentVideoPreviewUrl: row.VideoPreviewUrl,
+                currentCardPreviewVideoUrl: row.CardPreviewVideoUrl,
+                needsVideo: !row.VideoPreviewUrl,
+                needsCardPreview: !row.CardPreviewVideoUrl,
+            });
+        }
+
+        const result = {
+            generatedAt: new Date().toISOString(),
+            mode: 'missing-seedance-github-source-by-raw-title',
+            sourceId,
+            parsedVideoRecords: parsedRecords.length,
+            duplicateParsedTitles: [...duplicateTitles],
+            dbGithubMissingRows: rows.length,
+            dbMatches: matches.length,
+            unmatchedRows,
+            matches,
+        };
+        await fs.writeFile(out, JSON.stringify(result, null, 2));
+        console.log(`audit-missing-github-title complete parsedVideoRecords=${result.parsedVideoRecords} dbGithubMissingRows=${result.dbGithubMissingRows} dbMatches=${result.dbMatches} unmatchedRows=${result.unmatchedRows.length} out=${out}`);
+    } finally {
+        await conn.end();
+    }
 }
 
 function fail(message) {
@@ -322,9 +660,11 @@ async function main() {
     await loadEnv();
     const options = parseArgs(process.argv.slice(2));
     if (options.command === 'audit') return audit(options);
+    if (options.command === 'audit-missing-x') return auditMissingX(options);
+    if (options.command === 'audit-missing-github-title') return auditMissingGithubByTitle(options);
     if (options.command === 'dry-run') return dryRun(options);
     if (options.command === 'apply') return apply(options);
-    fail('Usage: prompt-video-repair.mjs <audit|dry-run|apply>');
+    fail('Usage: prompt-video-repair.mjs <audit|audit-missing-x|audit-missing-github-title|dry-run|apply>');
 }
 
 main().catch((err) => {

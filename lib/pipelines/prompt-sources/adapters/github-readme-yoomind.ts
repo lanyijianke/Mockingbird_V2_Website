@@ -1,5 +1,34 @@
 import type { PromptImportRecord, PromptSourceAdapter, PromptSourceConfig } from '../types';
 
+const YOUMIND_VIDEO_PROMPTS_ENDPOINT = 'https://youmind.com/youmarketing-api/video-prompts';
+const YOUMIND_VIDEO_MODEL_BY_CATEGORY: Record<string, string> = {
+    'seedance-2': 'seedance-2.0',
+};
+
+interface YouMindVideoPromptMedia {
+    streamId?: string;
+    customerCode?: string;
+    thumbnail?: string;
+    sourceUrl?: string;
+    caption?: string;
+}
+
+interface YouMindVideoPrompt {
+    id?: number | string;
+    media?: YouMindVideoPromptMedia;
+    videos?: YouMindVideoPromptMedia[];
+    streamId?: string;
+    customerCode?: string;
+    thumbnail?: string;
+    sourceUrl?: string;
+    caption?: string;
+}
+
+interface YouMindVideoPromptResponse {
+    prompts?: YouMindVideoPrompt[];
+    hasMore?: boolean;
+}
+
 function renderSourceTemplate(template: string, source: PromptSourceConfig): string {
     const values: Record<string, string> = {
         owner: source.owner || '',
@@ -70,6 +99,63 @@ function inferCloudflareVideoDownloadUrl(imageUrl: string): string | null {
     }
 }
 
+function buildCloudflareStreamDownloadUrl(streamId: string, customerCode?: string): string | null {
+    if (!streamId) return null;
+    const normalizedStreamId = streamId.trim();
+    if (!normalizedStreamId) return null;
+
+    try {
+        const parsed = new URL(normalizedStreamId);
+        if (parsed.hostname.endsWith('cloudflarestream.com')) {
+            const streamMatch = parsed.pathname.match(/^\/([^/]+)(?:\/|$)/);
+            return streamMatch
+                ? `https://${parsed.hostname}/${streamMatch[1]}/downloads/default.mp4`
+                : null;
+        }
+        if (parsed.hostname.endsWith('videodelivery.net')) {
+            const streamMatch = parsed.pathname.match(/^\/([^/]+)(?:\/|$)/);
+            return streamMatch
+                ? `https://videodelivery.net/${streamMatch[1]}/downloads/default.mp4`
+                : null;
+        }
+    } catch {
+        // streamId is usually an opaque Cloudflare Stream id, not a full URL.
+    }
+
+    const normalizedCustomerCode = customerCode?.trim();
+    if (normalizedCustomerCode) {
+        return `https://customer-${normalizedCustomerCode}.cloudflarestream.com/${normalizedStreamId}/downloads/default.mp4`;
+    }
+
+    return `https://videodelivery.net/${normalizedStreamId}/downloads/default.mp4`;
+}
+
+function extractMp4Url(value: string | undefined): string | null {
+    if (!value) return null;
+    return value.match(/https?:\/\/[^\s"')]+\.mp4(?:\?[^\s"')]+)?/i)?.[0] || null;
+}
+
+function inferCustomerCodeFromCloudflareUrl(value: string | undefined): string | undefined {
+    if (!value) return undefined;
+    try {
+        const parsed = new URL(value);
+        const match = parsed.hostname.match(/^customer-([^.]+)\.cloudflarestream\.com$/i);
+        return match?.[1];
+    } catch {
+        return undefined;
+    }
+}
+
+function resolveYouMindVideoUrl(media: YouMindVideoPromptMedia): string | null {
+    const directUrl = extractMp4Url(media.sourceUrl) || extractMp4Url(media.caption);
+    if (directUrl) return directUrl;
+
+    return buildCloudflareStreamDownloadUrl(
+        media.streamId || '',
+        media.customerCode || inferCustomerCodeFromCloudflareUrl(media.sourceUrl) || inferCustomerCodeFromCloudflareUrl(media.thumbnail)
+    );
+}
+
 function extractDirectVideoUrls(section: string): string[] {
     const htmlLinks = [...section.matchAll(/<a\s[^>]*href=["'](.*?\.mp4(?:\?[^"']*)?)["'][^>]*>/gi)]
         .map((match) => match[1].trim());
@@ -79,13 +165,38 @@ function extractDirectVideoUrls(section: string): string[] {
     return Array.from(new Set([...htmlLinks, ...plainLinks]));
 }
 
-function extractVideoUrls(section: string, imageUrls: string[]): string[] {
+function extractYouMindWatchIds(section: string): number[] {
+    const ids = [...section.matchAll(/https?:\/\/(?:www\.)?youmind\.com\/[^\s"')]+[?&]id=(\d+)/gi)]
+        .map((match) => Number.parseInt(match[1], 10))
+        .filter((id) => Number.isFinite(id) && id > 0);
+
+    return Array.from(new Set(ids));
+}
+
+function extractVideoUrls(
+    section: string,
+    imageUrls: string[],
+    youmindVideos: Map<number, string> = new Map(),
+    fallbackUrl?: string
+): string[] {
     const directUrls = extractDirectVideoUrls(section);
     if (directUrls.length > 0) return directUrls;
 
-    return imageUrls
+    const cloudflareUrls = imageUrls
         .map((imageUrl) => inferCloudflareVideoDownloadUrl(imageUrl))
         .filter((videoUrl): videoUrl is string => Boolean(videoUrl));
+    if (cloudflareUrls.length > 0) return cloudflareUrls;
+
+    const youmindUrls = extractYouMindWatchIds(section)
+        .map((id) => youmindVideos.get(id))
+        .filter((videoUrl): videoUrl is string => Boolean(videoUrl));
+    if (youmindUrls.length > 0) return youmindUrls;
+
+    if (extractYouMindWatchIds(section).length > 0 && fallbackUrl && /^https?:\/\/(?:www\.)?(?:x|twitter)\.com\//i.test(fallbackUrl)) {
+        return [fallbackUrl];
+    }
+
+    return [];
 }
 
 function extractLinkedValue(section: string, labels: string[]): string | undefined {
@@ -136,7 +247,63 @@ function buildGitHubAnchorSourceUrl(source: PromptSourceConfig, titleLine: strin
     return `${repoUrl}#${encodeURIComponent(anchor)}`;
 }
 
-export function parseYouMindReadmeToImportRecords(readme: string, source: PromptSourceConfig): PromptImportRecord[] {
+function needsYouMindVideoLookup(source: PromptSourceConfig, readme: string): boolean {
+    return Boolean(YOUMIND_VIDEO_MODEL_BY_CATEGORY[source.defaultCategory]) && /youmind\.com\/[^\s"')]+[?&]id=\d+/i.test(readme);
+}
+
+async function fetchYouMindVideoMap(source: PromptSourceConfig): Promise<Map<number, string>> {
+    const model = YOUMIND_VIDEO_MODEL_BY_CATEGORY[source.defaultCategory];
+    if (!model) return new Map();
+
+    const locale = source.locale || 'zh-CN';
+    const videoMap = new Map<number, string>();
+    let page = 1;
+    let hasMore = true;
+
+    while (hasMore && page <= 50) {
+        const response = await fetch(YOUMIND_VIDEO_PROMPTS_ENDPOINT, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0',
+            },
+            body: JSON.stringify({
+                model,
+                page,
+                limit: 100,
+                locale,
+            }),
+        });
+
+        if (!response.ok) break;
+
+        const payload = await response.json() as YouMindVideoPromptResponse;
+        for (const prompt of payload.prompts || []) {
+            const promptId = typeof prompt.id === 'number' ? prompt.id : Number.parseInt(String(prompt.id || ''), 10);
+            if (!Number.isFinite(promptId) || promptId <= 0) continue;
+
+            const mediaCandidates = [
+                ...(prompt.videos || []),
+                prompt.media,
+                prompt,
+            ].filter((item): item is YouMindVideoPromptMedia => Boolean(item));
+            const videoUrl = mediaCandidates
+                .map((media) => resolveYouMindVideoUrl(media))
+                .find((url): url is string => Boolean(url));
+            if (videoUrl) videoMap.set(promptId, videoUrl);
+        }
+
+        hasMore = Boolean(payload.hasMore);
+        page++;
+    }
+
+    return videoMap;
+}
+
+export async function parseYouMindReadmeToImportRecords(readme: string, source: PromptSourceConfig): Promise<PromptImportRecord[]> {
+    const youmindVideos = needsYouMindVideoLookup(source, readme)
+        ? await fetchYouMindVideoMap(source)
+        : new Map<number, string>();
     const records: PromptImportRecord[] = [];
     const sections = readme.split(/^###\s+/m).filter((section) => section.trim());
 
@@ -154,7 +321,7 @@ export function parseYouMindReadmeToImportRecords(readme: string, source: Prompt
         const description = extractSectionText(body, ['描述', 'Description']) || codeBlocks.join('\n\n').slice(0, 200);
         const originalSourceUrl = extractLinkedUrl(body, ['来源', 'Source']);
         const mediaUrls = extractImages(body);
-        const videoUrls = extractVideoUrls(body, mediaUrls);
+        const videoUrls = extractVideoUrls(body, mediaUrls, youmindVideos, originalSourceUrl);
 
         records.push({
             externalId: buildExternalId(source, titleLine),
