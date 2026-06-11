@@ -1,11 +1,6 @@
 #!/usr/bin/env node
 
-import {
-    GetObjectCommand,
-    ListObjectsV2Command,
-    PutObjectCommand,
-    S3Client,
-} from '@aws-sdk/client-s3';
+import { createS3RestClient } from './s3-rest-client.mjs';
 import {
     listR2ArticleStateKeys,
     rollbackR2ArticleState,
@@ -28,48 +23,21 @@ for (const name of requiredEnv) {
     }
 }
 
-const client = new S3Client({
-    region: 'auto',
+const client = createS3RestClient({
     endpoint: `https://${process.env.KNOWLEDGE_R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-    credentials: {
-        accessKeyId: process.env.KNOWLEDGE_R2_ACCESS_KEY_ID,
-        secretAccessKey: process.env.KNOWLEDGE_R2_SECRET_ACCESS_KEY,
-    },
+    accessKeyId: process.env.KNOWLEDGE_R2_ACCESS_KEY_ID,
+    secretAccessKey: process.env.KNOWLEDGE_R2_SECRET_ACCESS_KEY,
 });
 
 const r2Store = {
     async readText(bucket, key) {
-        const response = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
-        if (!response.Body) throw new Error(`Object has no body: ${bucket}/${key}`);
-        return response.Body.transformToString('utf-8');
+        return client.readText(bucket, key);
     },
     async writeJson(bucket, key, value) {
-        await client.send(new PutObjectCommand({
-            Bucket: bucket,
-            Key: key,
-            Body: `${JSON.stringify(value, null, 2)}\n`,
-            ContentType: 'application/json; charset=utf-8',
-        }));
+        await client.writeObject(bucket, key, `${JSON.stringify(value, null, 2)}\n`, 'application/json; charset=utf-8');
     },
     async listKeys(bucket, prefix) {
-        const keys = [];
-        let ContinuationToken;
-
-        do {
-            const response = await client.send(new ListObjectsV2Command({
-                Bucket: bucket,
-                Prefix: prefix,
-                ContinuationToken,
-            }));
-
-            for (const item of response.Contents || []) {
-                if (item.Key) keys.push(item.Key);
-            }
-
-            ContinuationToken = response.NextContinuationToken;
-        } while (ContinuationToken);
-
-        return keys;
+        return client.listKeys(bucket, prefix);
     },
 };
 

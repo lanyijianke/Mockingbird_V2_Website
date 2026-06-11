@@ -1,11 +1,11 @@
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { createR2S3RestClient, type S3RestClient } from '@/lib/storage/s3-rest-client';
 
 export type PromptMediaKind = 'images' | 'videos' | 'previews' | 'legacy';
 
-let cachedClient: S3Client | null = null;
+let cachedClient: S3RestClient | null = null;
 let cachedSignature = '';
 
-function getClient(): S3Client {
+function getClient(): S3RestClient {
     const accountId = process.env.KNOWLEDGE_R2_ACCOUNT_ID?.trim();
     const accessKeyId = process.env.KNOWLEDGE_R2_ACCESS_KEY_ID?.trim();
     const secretAccessKey = process.env.KNOWLEDGE_R2_SECRET_ACCESS_KEY?.trim();
@@ -17,10 +17,10 @@ function getClient(): S3Client {
     const signature = `${accountId}:${accessKeyId}:${secretAccessKey}`;
     if (cachedClient && cachedSignature === signature) return cachedClient;
 
-    cachedClient = new S3Client({
-        region: 'auto',
+    cachedClient = createR2S3RestClient({
         endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-        credentials: { accessKeyId, secretAccessKey },
+        accessKeyId,
+        secretAccessKey,
     });
     cachedSignature = signature;
     return cachedClient;
@@ -47,12 +47,12 @@ export async function uploadPromptMediaToR2(input: {
     if (!publicBaseUrl) throw new Error('KNOWLEDGE_PROMPT_MEDIA_R2_PUBLIC_BASE_URL is not configured');
 
     const key = joinKey(prefix, input.kind, input.fileName);
-    await getClient().send(new PutObjectCommand({
-        Bucket: bucket,
-        Key: key,
-        Body: input.body,
-        ContentType: input.contentType,
-    }));
+    await getClient().putObject({
+        bucket,
+        key,
+        body: input.body,
+        contentType: input.contentType,
+    });
 
     return `${publicBaseUrl.replace(/\/+$/g, '')}/${input.kind}/${encodeURIComponent(input.fileName)}`;
 }

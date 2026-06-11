@@ -1,10 +1,4 @@
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-
-vi.mock('@aws-sdk/client-s3', async () => {
-    const actual = await vi.importActual<typeof import('@aws-sdk/client-s3')>('@aws-sdk/client-s3');
-    return { ...actual, S3Client: vi.fn() };
-});
 
 describe('R2 prompt media store', () => {
     afterEach(() => {
@@ -14,11 +8,11 @@ describe('R2 prompt media store', () => {
         delete process.env.KNOWLEDGE_PROMPT_MEDIA_R2_BUCKET;
         delete process.env.KNOWLEDGE_PROMPT_MEDIA_R2_PREFIX;
         delete process.env.KNOWLEDGE_PROMPT_MEDIA_R2_PUBLIC_BASE_URL;
+        vi.unstubAllGlobals();
         vi.resetModules();
-        vi.clearAllMocks();
     });
 
-    it('uploads prompt media and returns the public R2 URL', async () => {
+    it('uploads prompt media through the S3-compatible R2 endpoint and returns the public URL', async () => {
         process.env.KNOWLEDGE_R2_ACCOUNT_ID = 'account-id';
         process.env.KNOWLEDGE_R2_ACCESS_KEY_ID = 'access-key';
         process.env.KNOWLEDGE_R2_SECRET_ACCESS_KEY = 'secret-key';
@@ -26,17 +20,20 @@ describe('R2 prompt media store', () => {
         process.env.KNOWLEDGE_PROMPT_MEDIA_R2_PREFIX = 'prompts/media';
         process.env.KNOWLEDGE_PROMPT_MEDIA_R2_PUBLIC_BASE_URL = 'https://assets.zgnknowledge.online/prompts/media';
 
-        const send = vi.fn(async (command: PutObjectCommand) => {
-            expect(command.input).toMatchObject({
-                Bucket: 'knowledge-articles',
-                Key: 'prompts/media/images/cat.webp',
-                ContentType: 'image/webp',
+        const fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+            expect(String(url)).toBe('https://account-id.r2.cloudflarestorage.com/knowledge-articles/prompts/media/images/cat.webp');
+            expect(init?.method).toBe('PUT');
+            expect(init?.headers).toMatchObject({
+                'content-type': 'image/webp',
+                host: 'account-id.r2.cloudflarestorage.com',
+                'x-amz-content-sha256': expect.any(String),
+                'x-amz-date': expect.any(String),
             });
-            return {};
+            expect(String((init?.headers as Record<string, string>).authorization)).toContain('Credential=access-key/');
+            expect(Buffer.from(init?.body as Uint8Array)).toEqual(Buffer.from('image'));
+            return new Response('', { status: 200 });
         });
-        vi.mocked(S3Client).mockImplementation(function MockS3Client() {
-            return { send };
-        } as unknown as typeof S3Client);
+        vi.stubGlobal('fetch', fetchMock);
 
         const { uploadPromptMediaToR2 } = await import('@/lib/pipelines/r2-media-store');
 
@@ -46,5 +43,6 @@ describe('R2 prompt media store', () => {
             body: Buffer.from('image'),
             contentType: 'image/webp',
         })).resolves.toBe('https://assets.zgnknowledge.online/prompts/media/images/cat.webp');
+        expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 });

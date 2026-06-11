@@ -26,6 +26,7 @@ vi.mock('@/lib/pipelines/media-pipeline', () => ({
 vi.mock('@/lib/utils/media-processor', () => ({
     createCardPreviewVideo: mockCreateCardPreviewVideo,
     extractFirstFrame: mockExtractFirstFrame,
+    isVideoFile: (value: string) => /\.(mp4|mov|webm|m4v)$/i.test(value),
 }));
 
 vi.mock('@/lib/utils/logger', () => ({
@@ -390,5 +391,74 @@ describe('prompt remote source sync runner', () => {
         expect(mockExecute.mock.calls[0][1]).toContain('https://assets.zgnknowledge.online/prompts/media/videos/demo.mp4');
         expect(mockExecute.mock.calls[0][1]).toContain('https://assets.zgnknowledge.online/prompts/media/previews/demo.card.mp4');
         expect(mockExecute.mock.calls[0][1]).toContain('https://assets.zgnknowledge.online/prompts/media/images/demo-cover.webp');
+    });
+
+    it('does not write non-video fallback downloads into video fields', async () => {
+        mockQueryOne.mockResolvedValue(null);
+        mockDownloadVideoViaYtDlp.mockResolvedValue(null);
+        mockDownloadMedia.mockResolvedValue('/tmp/prompt-media/twitter-page.png');
+        mockExecute.mockResolvedValue({ affectedRows: 1, insertId: 54 });
+
+        const { syncPromptSourceRecords } = await import('@/lib/pipelines/prompt-sources/remote-sync');
+        const report = await syncPromptSourceRecords(
+            {
+                id: 'test-source',
+                type: 'github-readme',
+                defaultCategory: 'nano-banana',
+                enabled: true,
+            },
+            [
+                {
+                    externalId: 'test-source:no-8',
+                    title: 'Twitter Fallback Prompt',
+                    content: 'Make a video',
+                    category: 'nano-banana',
+                    sourceUrl: 'https://x.com/example/status/1',
+                    videoUrls: ['https://x.com/example/status/1'],
+                },
+            ]
+        );
+
+        expect(report.newlyAdded).toBe(1);
+        expect(mockUploadPromptMediaFileToR2).not.toHaveBeenCalledWith('/tmp/prompt-media/twitter-page.png', 'videos');
+        expect(mockCreateCardPreviewVideo).not.toHaveBeenCalled();
+        expect(mockExtractFirstFrame).not.toHaveBeenCalled();
+        expect(mockExecute.mock.calls[0][1][8]).toBeNull();
+        expect(mockExecute.mock.calls[0][1][9]).toBeNull();
+    });
+
+    it('skips new Seedance records when source video cannot be downloaded as a real video', async () => {
+        mockQueryOne.mockResolvedValue(null);
+        mockDownloadVideoViaYtDlp.mockResolvedValue(null);
+        mockDownloadMedia.mockResolvedValue('/tmp/prompt-media/twitter-page.png');
+
+        const { syncPromptSourceRecords } = await import('@/lib/pipelines/prompt-sources/remote-sync');
+        const report = await syncPromptSourceRecords(
+            {
+                id: 'test-source',
+                type: 'github-readme',
+                defaultCategory: 'seedance-2',
+                enabled: true,
+            },
+            [
+                {
+                    externalId: 'test-source:no-9',
+                    title: 'Seedance Missing Video',
+                    content: 'Make a video',
+                    category: 'seedance-2',
+                    sourceUrl: 'https://x.com/example/status/2',
+                    videoUrls: ['https://x.com/example/status/2'],
+                },
+            ]
+        );
+
+        expect(report).toMatchObject({
+            totalParsed: 1,
+            newlyAdded: 0,
+            updated: 0,
+            skipped: 1,
+        });
+        expect(mockExecute).not.toHaveBeenCalled();
+        expect(mockUploadPromptMediaFileToR2).not.toHaveBeenCalledWith('/tmp/prompt-media/twitter-page.png', 'videos');
     });
 });

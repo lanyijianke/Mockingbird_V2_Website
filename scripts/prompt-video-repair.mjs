@@ -6,7 +6,7 @@ import os from 'node:os';
 import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import mysql from 'mysql2/promise';
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { createS3RestClient } from './s3-rest-client.mjs';
 
 const DEFAULT_PUBLIC_BASE = 'https://assets.zgnknowledge.online/prompts/media';
 const DEFAULT_R2_PREFIX = 'prompts/media';
@@ -66,13 +66,10 @@ async function getConnection() {
 
 function getR2Client() {
     const accountId = requireEnv('KNOWLEDGE_R2_ACCOUNT_ID');
-    return new S3Client({
-        region: 'auto',
+    return createS3RestClient({
         endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-        credentials: {
-            accessKeyId: requireEnv('KNOWLEDGE_R2_ACCESS_KEY_ID'),
-            secretAccessKey: requireEnv('KNOWLEDGE_R2_SECRET_ACCESS_KEY'),
-        },
+        accessKeyId: requireEnv('KNOWLEDGE_R2_ACCESS_KEY_ID'),
+        secretAccessKey: requireEnv('KNOWLEDGE_R2_SECRET_ACCESS_KEY'),
     });
 }
 
@@ -427,12 +424,7 @@ async function downloadToFile(url, filePath) {
 }
 
 async function uploadFile(client, bucket, key, filePath, contentType) {
-    await client.send(new PutObjectCommand({
-        Bucket: bucket,
-        Key: key,
-        Body: await fs.readFile(filePath),
-        ContentType: contentType,
-    }));
+    await client.writeFile(bucket, key, filePath, contentType);
 }
 
 async function downloadVideoWithYtDlp(url, outputPath) {

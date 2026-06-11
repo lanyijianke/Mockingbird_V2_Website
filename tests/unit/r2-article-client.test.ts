@@ -1,13 +1,4 @@
-import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-
-vi.mock('@aws-sdk/client-s3', async () => {
-    const actual = await vi.importActual<typeof import('@aws-sdk/client-s3')>('@aws-sdk/client-s3');
-    return {
-        ...actual,
-        S3Client: vi.fn(),
-    };
-});
 
 describe('r2 article client', () => {
     const originalAccountId = process.env.KNOWLEDGE_R2_ACCOUNT_ID;
@@ -36,30 +27,21 @@ describe('r2 article client', () => {
         if (originalLegacySecretAccessKey === undefined) delete process.env.R2_SECRET_ACCESS_KEY;
         else process.env.R2_SECRET_ACCESS_KEY = originalLegacySecretAccessKey;
 
+        vi.unstubAllGlobals();
         vi.clearAllMocks();
         vi.resetModules();
     });
 
-    it('reads an R2 object as UTF-8 text', async () => {
+    it('reads an R2 object as UTF-8 text through the S3-compatible endpoint', async () => {
         process.env.KNOWLEDGE_R2_ACCOUNT_ID = 'account-id';
         process.env.KNOWLEDGE_R2_ACCESS_KEY_ID = 'access-key';
         process.env.KNOWLEDGE_R2_SECRET_ACCESS_KEY = 'secret-key';
 
-        const send = vi.fn(async (command: GetObjectCommand) => {
-            expect(command.input).toMatchObject({
-                Bucket: 'knowledge-articles',
-                Key: 'ai/manifest.json',
-            });
-            return {
-                Body: {
-                    transformToString: vi.fn(async () => '{"articles":[]}'),
-                },
-            };
-        });
-
-        vi.mocked(S3Client).mockImplementation(function mockS3Client() {
-            return { send } as unknown as S3Client;
-        });
+        vi.stubGlobal('fetch', vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+            expect(String(url)).toBe('https://account-id.r2.cloudflarestorage.com/knowledge-articles/ai/manifest.json');
+            expect(init?.method).toBe('GET');
+            return new Response('{"articles":[]}', { status: 200 });
+        }));
 
         const { readR2ObjectText } = await import('@/lib/articles/r2-client');
         await expect(readR2ObjectText('knowledge-articles', 'ai/manifest.json')).resolves.toBe('{"articles":[]}');
@@ -73,25 +55,16 @@ describe('r2 article client', () => {
         process.env.R2_ACCESS_KEY_ID = 'legacy-access-key';
         process.env.R2_SECRET_ACCESS_KEY = 'legacy-secret-key';
 
-        const send = vi.fn(async () => ({
-            Body: {
-                transformToString: vi.fn(async () => '{"articles":[]}'),
-            },
-        }));
-
-        vi.mocked(S3Client).mockImplementation(function mockS3Client() {
-            return { send } as unknown as S3Client;
+        const fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+            expect(String(url)).toBe('https://legacy-account-id.r2.cloudflarestorage.com/knowledge-articles/ai/manifest.json');
+            expect(String((init?.headers as Record<string, string>).authorization)).toContain('Credential=legacy-access-key/');
+            return new Response('{"articles":[]}', { status: 200 });
         });
+        vi.stubGlobal('fetch', fetchMock);
 
         const { readR2ObjectText } = await import('@/lib/articles/r2-client');
         await expect(readR2ObjectText('knowledge-articles', 'ai/manifest.json')).resolves.toBe('{"articles":[]}');
-        expect(vi.mocked(S3Client)).toHaveBeenCalledWith(expect.objectContaining({
-            endpoint: 'https://legacy-account-id.r2.cloudflarestorage.com',
-            credentials: {
-                accessKeyId: 'legacy-access-key',
-                secretAccessKey: 'legacy-secret-key',
-            },
-        }));
+        expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
     it('fails clearly when R2 credentials are missing', async () => {
@@ -106,29 +79,30 @@ describe('r2 article client', () => {
         await expect(readR2ObjectText('bucket', 'key')).rejects.toThrow(/R2 credentials/i);
     });
 
-    it('lists R2 object keys under a prefix', async () => {
+    it('lists R2 object keys under a prefix with S3 ListObjectsV2 pagination', async () => {
         process.env.KNOWLEDGE_R2_ACCOUNT_ID = 'account-id';
         process.env.KNOWLEDGE_R2_ACCESS_KEY_ID = 'access-key';
         process.env.KNOWLEDGE_R2_SECRET_ACCESS_KEY = 'secret-key';
 
-        const send = vi
+        const fetchMock = vi
             .fn()
-            .mockResolvedValueOnce({
-                Contents: [
-                    { Key: 'ai/state/articles/one.json' },
-                    { Key: 'ai/state/articles/two.json' },
-                ],
-                IsTruncated: true,
-                NextContinuationToken: 'next-page',
-            })
-            .mockResolvedValueOnce({
-                Contents: [{ Key: 'ai/state/articles/three.json' }],
-                IsTruncated: false,
-            });
-
-        vi.mocked(S3Client).mockImplementation(function mockS3Client() {
-            return { send } as unknown as S3Client;
-        });
+            .mockResolvedValueOnce(new Response([
+                '<?xml version="1.0" encoding="UTF-8"?>',
+                '<ListBucketResult>',
+                '<IsTruncated>true</IsTruncated>',
+                '<Contents><Key>ai/state/articles/one.json</Key><Size>1</Size></Contents>',
+                '<Contents><Key>ai/state/articles/two.json</Key><Size>2</Size></Contents>',
+                '<NextContinuationToken>next/page</NextContinuationToken>',
+                '</ListBucketResult>',
+            ].join(''), { status: 200 }))
+            .mockResolvedValueOnce(new Response([
+                '<?xml version="1.0" encoding="UTF-8"?>',
+                '<ListBucketResult>',
+                '<IsTruncated>false</IsTruncated>',
+                '<Contents><Key>ai/state/articles/three.json</Key><Size>3</Size></Contents>',
+                '</ListBucketResult>',
+            ].join(''), { status: 200 }));
+        vi.stubGlobal('fetch', fetchMock);
 
         const { listR2ObjectKeys } = await import('@/lib/articles/r2-client');
         await expect(listR2ObjectKeys('knowledge-articles', 'ai/state/articles/')).resolves.toEqual([
@@ -137,6 +111,15 @@ describe('r2 article client', () => {
             'ai/state/articles/three.json',
         ]);
 
-        expect(send).toHaveBeenCalledTimes(2);
+        expect(fetchMock).toHaveBeenNthCalledWith(
+            1,
+            'https://account-id.r2.cloudflarestorage.com/knowledge-articles?list-type=2&prefix=ai%2Fstate%2Farticles%2F',
+            expect.objectContaining({ method: 'GET' }),
+        );
+        expect(fetchMock).toHaveBeenNthCalledWith(
+            2,
+            'https://account-id.r2.cloudflarestorage.com/knowledge-articles?continuation-token=next%2Fpage&list-type=2&prefix=ai%2Fstate%2Farticles%2F',
+            expect.objectContaining({ method: 'GET' }),
+        );
     });
 });

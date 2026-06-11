@@ -1,7 +1,7 @@
 import path from 'path';
 import { execute, queryOne } from '@/lib/db';
 import { createEmptyReport, type PipelineReport } from '@/lib/pipelines/pipeline-shared';
-import { createCardPreviewVideo, extractFirstFrame } from '@/lib/utils/media-processor';
+import { createCardPreviewVideo, extractFirstFrame, isVideoFile } from '@/lib/utils/media-processor';
 import { logger } from '@/lib/utils/logger';
 import {
     downloadMedia,
@@ -70,6 +70,11 @@ function getGeneratedCopyCount(source: PromptSourceConfig, record: PromptImportR
     );
 }
 
+function requiresVideoMedia(source: PromptSourceConfig, record: PromptImportRecord): boolean {
+    const category = record.category || source.defaultCategory;
+    return category === 'seedance-2';
+}
+
 async function resolveRecordMedia(
     record: PromptImportRecord,
     mediaDir: string,
@@ -105,7 +110,7 @@ async function resolveRecordMedia(
         if (videoUrl.startsWith('http')) {
             const localVideoPath = await downloadVideoViaYtDlp(videoUrl, mediaDir) || await downloadMedia(videoUrl, mediaDir);
 
-            if (localVideoPath) {
+            if (localVideoPath && isVideoFile(localVideoPath)) {
                 if (!videoPreviewUrl) {
                     videoPreviewUrl = await uploadPromptMediaFileToR2(localVideoPath, 'videos');
                 }
@@ -178,6 +183,11 @@ async function upsertPromptRecord(
 
     const existing = await findExistingRecord(record);
     const media = await resolveRecordMedia(record, mediaDir, existing || undefined);
+
+    if (!existing && requiresVideoMedia(source, record) && !media.videoPreviewUrl) {
+        logger.warn('PromptSourceSync', `跳过缺少真实视频的新视频提示词: ${record.title}`);
+        return { status: 'skipped' };
+    }
 
     if (existing) {
         const updates: string[] = [];

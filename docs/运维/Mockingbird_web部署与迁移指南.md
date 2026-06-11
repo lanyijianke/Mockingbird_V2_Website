@@ -1,206 +1,115 @@
-# Knowledge Web 运维手册（2026-06-05）
+# Mockingbird Web 运维手册（2026-06-10）
 
-这份文档是 `Mockingbird_V2_Knowledge_Website` 当前生产环境的权威运维手册。
+这份文档是 `zgnknowledge.online` 和 `zgntools.online` 当前生产环境的权威运维手册。
 
-目标很简单：
-
-- 不再重复探索服务器拓扑。
-- 不再把已经过时的 `systemd + next start` 路径当成当前事实。
-- 发布、回滚、排障都按同一套实际流程执行。
+2026-06-10 起，`mockingbird-knowledge-web` 和 `mockingbird-tools-api` 已从 Docker 迁移到宿主机 `systemd`。不要再按 Docker Compose 发布这两个服务。
 
 ## 1. 当前生产拓扑
 
-生产站点当前真实结构：
+### 1.1 Knowledge Web
 
 - 域名：`zgnknowledge.online`
-- 服务器 SSH 别名：`mk_website`
-- 服务器地址：`149.88.65.19:1501`
-- 入口链路：`Cloudflare -> Nginx -> Docker -> Next.js`
+- SSH 别名：`mk_website`
+- 入口链路：`Cloudflare -> Nginx -> systemd -> Next.js`
 - Nginx 反代目标：`127.0.0.1:5046`
-- Docker Compose 目录：`/home/grank/apps/infra`
-- Compose 文件：`/home/grank/apps/infra/docker-compose.yml`
-- Compose 服务名：`mockingbird-knowledge-web`
-- 容器名：`mockingbird-knowledge-web`
-- 宿主应用目录：`/home/grank/apps/mockingbird-knowledge-web/current`
-- 共享目录：`/home/grank/apps/mockingbird-knowledge-web/shared`
-- 生产环境文件：`/home/grank/apps/mockingbird-knowledge-web/shared/.env.production`
-- 当前镜像名：`infra-mockingbird-knowledge-web`
+- systemd 服务：`mockingbird-knowledge-web.service`
+- 应用目录：`/home/grank/apps/mockingbird-knowledge-web/current`
+- 环境文件：`/home/grank/apps/mockingbird-knowledge-web/shared/.env.production`
+- 启动命令：`npm run start -- --hostname 127.0.0.1 --port 5046`
 
-当前不是 `systemd` 直接启动 `next start`。线上服务运行在 Docker 容器里，必须按 Compose 流程发布。
+### 1.2 Tools API
 
-## 2. 服务器上的关键路径
+- 域名：`zgntools.online`
+- SSH 别名：`mk_website`
+- 入口链路：`Cloudflare -> Nginx -> systemd -> Node API`
+- Nginx 反代目标：`127.0.0.1:43117`
+- systemd 服务：`mockingbird-tools-api.service`
+- 应用目录：`/home/grank/apps/mockingbird-tools-website/current`
+- 环境文件：`/home/grank/apps/mockingbird-tools-website/current/.env`
+- 启动命令：`npm run start --workspace @mockingbird/api`
 
-应用与共享目录：
+### 1.3 Docker 当前状态
 
-- `/home/grank/apps/mockingbird-knowledge-web/current`
-- `/home/grank/apps/mockingbird-knowledge-web/shared`
-- `/home/grank/apps/mockingbird-knowledge-web/backups`
+`mockingbird-knowledge-web` 和 `mockingbird-tools-api` 不再由 Docker 运行。
 
-基础设施目录：
+- `/home/grank/apps/infra/docker-compose.yml` 当前不应再声明这两个服务。
+- 旧 Docker 容器如果还存在，也应保持 `Exited`，不能占用 `5046` 或 `43117`。
+- `searxng` 已停用并从 Compose 中移除。
+- `mihomo` 如仍在 Docker 中运行，不属于这两个 Web 服务迁移范围，不要误删。
 
-- `/home/grank/apps/infra/docker-compose.yml`
-- `/home/grank/apps/infra/mockingbird-knowledge-web.Dockerfile`
-
-共享数据与挂载：
-
-- `/home/grank/apps/mockingbird-knowledge-web/shared/.env.production`
-- `/home/grank/apps/mockingbird-knowledge-web/current/data`
-- `/opt/mockingbird-knowledge-web/media`
-- `/home/grank/web-article`：只读挂载，当前文章运行时已不依赖它作为主数据源
-
-容器内关键挂载：
-
-- `/app/shared`
-- `/app/data`
-- `/opt/mockingbird-knowledge-web/media`
-
-## 3. 运行方式
-
-查看服务状态：
+## 2. 快速状态检查
 
 ```bash
-ssh mk_website
-sudo docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+ssh mk_website '
+systemctl is-active mockingbird-knowledge-web mockingbird-tools-api nginx
+systemctl is-enabled mockingbird-knowledge-web mockingbird-tools-api
+ss -ltnp | grep -E ":(5046|43117)"
+sudo docker ps -a --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+'
 ```
 
-预期会看到：
+预期：
 
-- 容器名 `mockingbird-knowledge-web`
-- 镜像 `infra-mockingbird-knowledge-web`
-- 端口映射 `127.0.0.1:5046->5046/tcp`
+- `mockingbird-knowledge-web`：`active`
+- `mockingbird-tools-api`：`active`
+- `nginx`：`active`
+- `5046` 由宿主机 `next-server` 监听
+- `43117` 由宿主机 `node` 监听
+- Docker 里不应有正在运行的 `mockingbird-knowledge-web` 或 `mockingbird-tools-api`
 
-查看日志：
+## 3. 日志与健康检查
+
+### 3.1 本机健康检查
 
 ```bash
-ssh mk_website
-sudo docker logs --tail 100 mockingbird-knowledge-web
+ssh mk_website '
+curl -fsS http://127.0.0.1:5046/api/health
+curl -fsS http://127.0.0.1:43117/health
+'
 ```
 
-进入容器：
+### 3.2 外网健康检查
 
 ```bash
-ssh mk_website
-cd /home/grank/apps/infra
-sudo docker compose exec mockingbird-knowledge-web bash
+curl -I https://zgnknowledge.online/
+curl -fsS https://zgnknowledge.online/api/health
+curl -fsS https://zgntools.online/health
 ```
 
-## 4. 环境变量规范
+### 3.3 查看日志
 
-### 4.1 当前规范
-
-R2 相关配置现在以 `KNOWLEDGE_*` 为唯一规范命名：
-
-```env
-KNOWLEDGE_ARTICLE_R2_SOURCES=[{"site":"ai","source":"web-article","bucket":"knowledge-articles","prefix":"ai","manifestPath":"manifest.json","publicBaseUrl":"https://assets.zgnknowledge.online/ai"}]
-KNOWLEDGE_R2_PUBLIC_ASSET_HOST=assets.zgnknowledge.online
-KNOWLEDGE_R2_ACCOUNT_ID=...
-KNOWLEDGE_R2_ACCESS_KEY_ID=...
-KNOWLEDGE_R2_SECRET_ACCESS_KEY=...
-KNOWLEDGE_PROMPT_MEDIA_R2_BUCKET=knowledge-articles
-KNOWLEDGE_PROMPT_MEDIA_R2_PREFIX=prompts/media
-KNOWLEDGE_PROMPT_MEDIA_R2_PUBLIC_BASE_URL=https://assets.zgnknowledge.online/prompts/media
+```bash
+ssh mk_website '
+sudo journalctl -u mockingbird-knowledge-web -n 120 --no-pager
+sudo journalctl -u mockingbird-tools-api -n 120 --no-pager
+'
 ```
 
-文章运行时读取：
+实时跟日志：
 
-- `KNOWLEDGE_ARTICLE_R2_SOURCES`
-- `KNOWLEDGE_R2_*`
+```bash
+ssh mk_website 'sudo journalctl -u mockingbird-knowledge-web -f'
+ssh mk_website 'sudo journalctl -u mockingbird-tools-api -f'
+```
 
-提示词媒体写入读取：
+## 4. Knowledge Web 发布流程
 
-- `KNOWLEDGE_PROMPT_MEDIA_R2_*`
-- `KNOWLEDGE_R2_*`
+### 4.1 本地检查
 
-### 4.2 兼容回退
-
-代码目前暂时兼容旧变量名，避免漏改环境时整站直接掉空：
-
-- `ARTICLE_R2_SOURCES`
-- `ARTICLE_R2_PUBLIC_HOST`
-- `R2_ACCOUNT_ID`
-- `R2_ACCESS_KEY_ID`
-- `R2_SECRET_ACCESS_KEY`
-- `PROMPT_MEDIA_R2_BUCKET`
-- `PROMPT_MEDIA_R2_PREFIX`
-- `PROMPT_MEDIA_R2_PUBLIC_BASE_URL`
-
-但运维操作必须只编辑 `KNOWLEDGE_*` 这套。旧键只作为迁移回退，不应继续作为主配置来源。
-
-### 4.3 这次踩过的坑
-
-如果线上出现下面这个组合症状：
-
-- 首页文章数变成 `0`
-- `/api/articles` 返回空列表
-- 提示词图片还能正常显示
-
-优先检查的不是数据库，而是 R2 文章配置：
-
-1. `KNOWLEDGE_ARTICLE_R2_SOURCES` 是否存在。
-2. `KNOWLEDGE_R2_ACCOUNT_ID / ACCESS_KEY_ID / SECRET_ACCESS_KEY` 是否是当前有效值。
-3. 不要被“提示词图片能显示”误导。
-
-原因：
-
-- 提示词图片通常直接使用数据库里的公开 URL。
-- 文章列表和文章详情依赖先读 R2 `manifest.json` 和 markdown。
-- 文章配置错了，文章会全部归零；提示词图片仍可能正常。
-
-## 5. 文章与提示词的运行时数据源
-
-### 5.1 文章
-
-文章当前主数据源是 Cloudflare R2。
-
-关键对象：
-
-- bucket：`knowledge-articles`
-- manifest：`ai/manifest.json`
-- 正文：`ai/articles/published/{slug}/index.md`
-- 图片：`ai/articles/published/{slug}/images/...`
-- 公开域名：`https://assets.zgnknowledge.online`
-
-网站会：
-
-- 服务端从 R2 读取 `manifest.json`
-- 服务端从 R2 读取 markdown 正文
-- 浏览器直接加载 `https://assets.zgnknowledge.online/...` 的图片资源
-
-### 5.2 提示词
-
-提示词主数据源仍然是 MySQL `Prompts` 表。
-
-提示词的图片/视频媒体：
-
-- 最终写入 R2
-- 数据库中保存公开 URL
-- 不依赖文章 manifest
-
-相关手册：
-
-- `docs/运维/R2文章状态机与发布流程.md`
-- `docs/运维/R2提示词媒体迁移与修复.md`：提示词媒体迁移、Seedance 视频回填、批量补库后的页面 revalidate 与缓存排障。
-
-## 6. 标准发布流程
-
-### 6.1 本地发布前检查
-
-在仓库根目录执行：
+在本地仓库执行：
 
 ```bash
 npm run lint
 npm run build
 ```
 
-如果改动有明确回归面，补跑相关测试：
+如改动涉及明确回归面，补跑相关测试：
 
 ```bash
 npm test -- tests/unit/...
 ```
 
-### 6.2 备份远端当前版本
-
-源码备份：
+### 4.2 备份远端
 
 ```bash
 ssh mk_website '
@@ -214,7 +123,7 @@ tar -czf /home/grank/apps/mockingbird-knowledge-web/backups/source-$ts.tar.gz \
 '
 ```
 
-环境文件变更前也要单独备份：
+环境文件变更前单独备份：
 
 ```bash
 ssh mk_website '
@@ -223,9 +132,7 @@ cp /home/grank/apps/mockingbird-knowledge-web/shared/.env.production \
 '
 ```
 
-### 6.3 全量同步代码到 `current`
-
-推荐命令：
+### 4.3 同步代码
 
 ```bash
 rsync -az --delete \
@@ -245,106 +152,243 @@ rsync -az --delete \
   mk_website:/home/grank/apps/mockingbird-knowledge-web/current/
 ```
 
-不要把下面这些部署态内容从本地覆盖上去：
-
-- `.env.local`
-- `data/`
-- `node_modules/`
-- `.next/`
-
-### 6.4 重建并重启容器
+### 4.4 宿主机构建并重启
 
 ```bash
 ssh mk_website '
-cd /home/grank/apps/infra &&
-sudo docker compose build mockingbird-knowledge-web &&
-sudo docker compose up -d mockingbird-knowledge-web
+cd /home/grank/apps/mockingbird-knowledge-web/current &&
+npm ci &&
+npm run build &&
+sudo systemctl restart mockingbird-knowledge-web
 '
 ```
 
-这是当前唯一正确的发版方式。不要再按 `npm run build && systemctl restart ...` 处理这个站点。
-
-## 7. 发布后巡检
-
-### 7.1 容器状态
+### 4.5 发布后验证
 
 ```bash
 ssh mk_website '
-sudo docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}" | rg "mockingbird-knowledge-web|NAMES"
+systemctl is-active mockingbird-knowledge-web
+curl -fsS http://127.0.0.1:5046/api/health
+sudo journalctl -u mockingbird-knowledge-web -n 80 --no-pager
 '
-```
 
-### 7.2 外部站点
-
-```bash
 curl -I https://zgnknowledge.online/
-curl -I https://zgnknowledge.online/ai/rankings/github
-curl -I https://zgnknowledge.online/ai/rankings/skills-hot
-```
-
-预期：
-
-- 首页 `200`
-- 现存榜单页 `200`
-- 已移除的 `skills-hot` 为 `404`
-
-### 7.3 API
-
-```bash
 curl -fsS "https://zgnknowledge.online/api/articles" | head
-curl -fsS "https://zgnknowledge.online/api/articles?action=top&count=3" | head
 curl -fsS "https://zgnknowledge.online/api/prompts?page=1&pageSize=5" | head
 ```
 
-预期：
+## 5. Tools API 发布流程
 
-- `/api/articles` 非空
-- `top` 接口非空
-- 提示词接口正常返回
-
-### 7.4 首页摘要
+### 5.1 备份远端
 
 ```bash
-curl -sS https://zgnknowledge.online/ | rg -o "已收录.*个榜单" -m 1
+ssh mk_website '
+mkdir -p /home/grank/apps/mockingbird-tools-website/backups
+ts=$(date +%Y%m%d-%H%M%S)
+tar -czf /home/grank/apps/mockingbird-tools-website/backups/source-$ts.tar.gz \
+  --exclude=node_modules \
+  --exclude=dist \
+  -C /home/grank/apps/mockingbird-tools-website/current .
+'
 ```
 
-用于快速确认：
+### 5.2 构建并重启
 
-- 文章数不是 `0`
-- 榜单数是否符合当前公开页面数量
+```bash
+ssh mk_website '
+cd /home/grank/apps/mockingbird-tools-website/current &&
+npm ci &&
+npm run build --workspace @mockingbird/api &&
+sudo systemctl restart mockingbird-tools-api
+'
+```
 
-## 8. 环境变量更新流程
+### 5.3 发布后验证
 
-生产环境变量编辑位置：
+```bash
+ssh mk_website '
+systemctl is-active mockingbird-tools-api
+curl -fsS http://127.0.0.1:43117/health
+sudo journalctl -u mockingbird-tools-api -n 80 --no-pager
+'
 
-- `/home/grank/apps/mockingbird-knowledge-web/shared/.env.production`
+curl -fsS https://zgntools.online/health
+```
 
-修改步骤：
+## 6. systemd 服务
 
-1. 先备份 `.env.production`
-2. 修改 `KNOWLEDGE_*` 规范键
-3. 如需平滑兼容，同步更新对应旧键
-4. 重建容器
-5. 验证 `/api/articles`、首页、目标功能
+### 6.1 Knowledge Web
 
-单纯修改环境变量，不重建容器不会生效。因为当前环境通过 Compose `env_file` 注入，容器必须重建或至少重新创建。
+服务文件：
 
-## 9. 故障排查清单
+```bash
+/etc/systemd/system/mockingbird-knowledge-web.service
+```
 
-### 9.1 首页文章区空白
+关键配置：
 
-先查：
+```ini
+User=grank
+Group=grank
+WorkingDirectory=/home/grank/apps/mockingbird-knowledge-web/current
+EnvironmentFile=/home/grank/apps/mockingbird-knowledge-web/shared/.env.production
+Environment=NODE_ENV=production
+Environment=NEXT_TELEMETRY_DISABLED=1
+Environment=PORT=5046
+ExecStart=/usr/bin/npm run start -- --hostname 127.0.0.1 --port 5046
+```
+
+### 6.2 Tools API
+
+服务文件：
+
+```bash
+/etc/systemd/system/mockingbird-tools-api.service
+```
+
+关键配置：
+
+```ini
+User=grank
+Group=grank
+WorkingDirectory=/home/grank/apps/mockingbird-tools-website/current
+EnvironmentFile=/home/grank/apps/mockingbird-tools-website/current/.env
+Environment=API_HOST=127.0.0.1
+Environment=API_PORT=43117
+ExecStart=/usr/bin/npm run start --workspace @mockingbird/api
+```
+
+改服务文件后执行：
+
+```bash
+ssh mk_website '
+sudo systemctl daemon-reload
+sudo systemctl restart mockingbird-knowledge-web mockingbird-tools-api
+sudo systemctl status mockingbird-knowledge-web mockingbird-tools-api --no-pager -l
+'
+```
+
+## 7. 环境变量
+
+### 7.1 Knowledge Web
+
+生产环境变量文件：
+
+```bash
+/home/grank/apps/mockingbird-knowledge-web/shared/.env.production
+```
+
+R2 相关配置以 `KNOWLEDGE_*` 为规范命名：
+
+```env
+KNOWLEDGE_ARTICLE_R2_SOURCES=...
+KNOWLEDGE_R2_PUBLIC_ASSET_HOST=assets.zgnknowledge.online
+KNOWLEDGE_R2_ACCOUNT_ID=...
+KNOWLEDGE_R2_ACCESS_KEY_ID=...
+KNOWLEDGE_R2_SECRET_ACCESS_KEY=...
+KNOWLEDGE_PROMPT_MEDIA_R2_BUCKET=knowledge-articles
+KNOWLEDGE_PROMPT_MEDIA_R2_PREFIX=prompts/media
+KNOWLEDGE_PROMPT_MEDIA_R2_PUBLIC_BASE_URL=https://assets.zgnknowledge.online/prompts/media
+```
+
+修改环境变量后必须重启服务：
+
+```bash
+ssh mk_website 'sudo systemctl restart mockingbird-knowledge-web'
+```
+
+### 7.2 Tools API
+
+生产环境变量文件：
+
+```bash
+/home/grank/apps/mockingbird-tools-website/current/.env
+```
+
+修改后必须重启服务：
+
+```bash
+ssh mk_website 'sudo systemctl restart mockingbird-tools-api'
+```
+
+## 8. 文章与提示词数据源
+
+### 8.1 文章
+
+文章主数据源是 Cloudflare R2。
+
+- bucket：`knowledge-articles`
+- manifest：`ai/manifest.json`
+- 正文：`ai/articles/published/{slug}/index.md`
+- 图片：`ai/articles/published/{slug}/images/...`
+- 公开域名：`https://assets.zgnknowledge.online`
+
+### 8.2 提示词
+
+提示词主数据源是 MySQL `Prompts` 表。
+
+提示词图片和视频媒体最终写入 R2，数据库中保存公开 URL。Seedance 等视频模型如果页面只显示静态图，要优先检查数据库里的 `VideoPreviewUrl`、`CardPreviewVideoUrl` 是否有真实视频 URL，而不是只做前端 fallback。
+
+相关手册：
+
+- `docs/运维/R2文章状态机与发布流程.md`
+- `docs/运维/R2提示词媒体迁移与修复.md`
+
+## 9. 常见故障排查
+
+### 9.1 网站打不开
+
+按链路从外到内查：
+
+```bash
+curl -I https://zgnknowledge.online/
+ssh mk_website 'sudo nginx -t && systemctl is-active nginx'
+ssh mk_website 'systemctl is-active mockingbird-knowledge-web'
+ssh mk_website 'curl -fsS http://127.0.0.1:5046/api/health'
+```
+
+如果 Nginx inactive：
+
+```bash
+ssh mk_website 'sudo systemctl start nginx'
+```
+
+如果应用 inactive：
+
+```bash
+ssh mk_website '
+sudo systemctl restart mockingbird-knowledge-web
+sudo journalctl -u mockingbird-knowledge-web -n 120 --no-pager
+'
+```
+
+### 9.2 端口被 Docker 占用
+
+```bash
+ssh mk_website '
+ss -ltnp | grep -E ":(5046|43117)"
+sudo docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+'
+```
+
+如果看到 Docker 容器占用 `5046` 或 `43117`，先停掉对应旧容器，再启动 systemd：
+
+```bash
+ssh mk_website '
+sudo docker stop mockingbird-knowledge-web mockingbird-tools-api || true
+sudo systemctl restart mockingbird-knowledge-web mockingbird-tools-api
+'
+```
+
+### 9.3 首页文章区为空
+
+先查 API：
 
 ```bash
 curl -fsS "https://zgnknowledge.online/api/articles"
 ```
 
-如果返回：
-
-- `items: []`
-- `totalCount: 0`
-
-继续查：
+如果返回空列表，检查 Knowledge Web 环境文件里的 R2 配置：
 
 ```bash
 ssh mk_website '
@@ -353,93 +397,87 @@ rg -n "^KNOWLEDGE_ARTICLE_R2_SOURCES=|^KNOWLEDGE_R2_ACCOUNT_ID=|^KNOWLEDGE_R2_AC
 '
 ```
 
-然后看容器日志是否有：
+再看日志是否有：
 
 - `Unauthorized`
 - `R2 credentials are not configured`
-- `Failed to collect page data for /ai/articles/[slug]`
+- `Failed to collect page data`
 
-### 9.2 镜像构建失败，提示 `Unauthorized`
+### 9.4 Seedance 视频变静态图
 
-这通常不是 Docker 问题，是 R2 凭证失效或环境值错误。
+这通常不是单纯前端展示问题。检查顺序：
 
-重点确认：
+1. 查数据库对应行的 `VideoPreviewUrl` 和 `CardPreviewVideoUrl`。
+2. 确认 URL 后缀和响应类型是真视频，例如 `.mp4` 和 `video/mp4`。
+3. 查 R2 是否存在对应视频对象。
+4. 如字段为空，使用现有修复脚本审计和回填，不要把图片 URL 写进视频字段。
 
-- `KNOWLEDGE_R2_ACCOUNT_ID`
-- `KNOWLEDGE_R2_ACCESS_KEY_ID`
-- `KNOWLEDGE_R2_SECRET_ACCESS_KEY`
-
-### 9.3 提示词图片正常但文章全没了
-
-按“文章 R2 配置异常”处理，不要误判为静态资源故障。
-
-### 9.4 首页榜单数不对
-
-这是代码摘要数字和真实公开榜单页数量不一致。检查：
-
-- `app/ai/AiHomePage.tsx`
-- 当前 `app/ai/rankings/*` 实际公开页数量
-
-## 10. 回滚流程
-
-### 10.1 回滚代码版本
-
-先看备份：
+可从宿主机运行修复脚本：
 
 ```bash
-ssh mk_website 'ls -lah /home/grank/apps/mockingbird-knowledge-web/backups'
+ssh mk_website '
+cd /home/grank/apps/mockingbird-knowledge-web/current &&
+node scripts/prompt-video-repair.mjs audit-missing-x --limit=300 --out=/tmp/seedance-missing-x-audit.json
+'
 ```
 
-恢复源码：
+先审计输出，再决定是否 `apply`。
+
+## 10. 回滚
+
+### 10.1 Knowledge Web 回滚代码
 
 ```bash
 ssh mk_website '
 rm -rf /home/grank/apps/mockingbird-knowledge-web/current/* &&
 tar -xzf /home/grank/apps/mockingbird-knowledge-web/backups/source-时间戳.tar.gz \
-  -C /home/grank/apps/mockingbird-knowledge-web/current
+  -C /home/grank/apps/mockingbird-knowledge-web/current &&
+cd /home/grank/apps/mockingbird-knowledge-web/current &&
+npm ci &&
+npm run build &&
+sudo systemctl restart mockingbird-knowledge-web
 '
 ```
 
-然后重建容器：
-
-```bash
-ssh mk_website '
-cd /home/grank/apps/infra &&
-sudo docker compose build mockingbird-knowledge-web &&
-sudo docker compose up -d mockingbird-knowledge-web
-'
-```
-
-### 10.2 回滚环境变量
+### 10.2 Knowledge Web 回滚环境变量
 
 ```bash
 ssh mk_website '
 cp /home/grank/apps/mockingbird-knowledge-web/shared/.env.production.bak-时间戳 \
    /home/grank/apps/mockingbird-knowledge-web/shared/.env.production &&
-cd /home/grank/apps/infra &&
-sudo docker compose up -d --force-recreate mockingbird-knowledge-web
+sudo systemctl restart mockingbird-knowledge-web
 '
 ```
 
-### 10.3 回滚文章发布状态
+### 10.3 Tools API 回滚代码
 
-文章 manifest 回滚不要改站点代码，按 R2 状态机文档处理：
+```bash
+ssh mk_website '
+rm -rf /home/grank/apps/mockingbird-tools-website/current/* &&
+tar -xzf /home/grank/apps/mockingbird-tools-website/backups/source-时间戳.tar.gz \
+  -C /home/grank/apps/mockingbird-tools-website/current &&
+cd /home/grank/apps/mockingbird-tools-website/current &&
+npm ci &&
+npm run build --workspace @mockingbird/api &&
+sudo systemctl restart mockingbird-tools-api
+'
+```
 
-- `docs/运维/R2文章状态机与发布流程.md`
+## 11. 禁止继续沿用的旧操作
 
-## 11. 禁止继续沿用的旧认知
+以下操作不再适用于 `mockingbird-knowledge-web` 和 `mockingbird-tools-api`：
 
-以下说法对当前站点都不成立：
+- 进入 Docker 容器排查这两个服务。
+- `docker compose build mockingbird-knowledge-web`
+- `docker compose up -d mockingbird-knowledge-web`
+- `docker compose build mockingbird-tools-api`
+- `docker compose up -d mockingbird-tools-api`
+- 把 Docker 容器视为线上真实运行环境。
+- 用图片 fallback 掩盖视频字段缺失或错误。
 
-- “这是 `systemd` 直接跑的 Next.js 服务”
-- “改完代码去服务器里 `npm run build` 然后 `systemctl restart` 就行”
-- “文章还是靠本地内容仓库直接读”
-- “提示词图片能显示，说明 R2 配置没问题”
-- “旧的 `ARTICLE_R2_*` / `R2_*` 是主配置”
+当前正确操作是：
 
-当前正确理解是：
-
-- 生产站点通过 Docker Compose 发布
-- 文章主数据源是 R2 manifest
-- 提示词媒体和文章内容虽然都在 R2，但读取链路不同
-- `KNOWLEDGE_*` 才是规范配置
+- 代码在宿主机目录构建。
+- 服务由 systemd 启停。
+- 日志看 `journalctl`。
+- 端口必须由宿主机进程监听。

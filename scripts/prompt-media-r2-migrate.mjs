@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import fssync from 'node:fs';
 import path from 'node:path';
 import mysql from 'mysql2/promise';
-import { HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { createS3RestClient } from './s3-rest-client.mjs';
 
 const LOCAL_PREFIX = '/content/prompts/media/';
 const DEFAULT_R2_PREFIX = 'prompts/media';
@@ -81,13 +81,10 @@ async function getConnection() {
 
 async function getR2Client() {
     const accountId = requireEnv('KNOWLEDGE_R2_ACCOUNT_ID');
-    return new S3Client({
-        region: 'auto',
+    return createS3RestClient({
         endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-        credentials: {
-            accessKeyId: requireEnv('KNOWLEDGE_R2_ACCESS_KEY_ID'),
-            secretAccessKey: requireEnv('KNOWLEDGE_R2_SECRET_ACCESS_KEY'),
-        },
+        accessKeyId: requireEnv('KNOWLEDGE_R2_ACCESS_KEY_ID'),
+        secretAccessKey: requireEnv('KNOWLEDGE_R2_SECRET_ACCESS_KEY'),
     });
 }
 
@@ -226,12 +223,7 @@ async function upload(options) {
     for (const ref of uploadRefs) {
         const absolutePath = path.join(auditFile.mediaDir, ref.fileName);
         try {
-            await retry(async () => client.send(new PutObjectCommand({
-                Bucket: bucket,
-                Key: legacyKey(ref.fileName),
-                Body: await fs.readFile(absolutePath),
-                ContentType: getContentType(ref.fileName),
-            })));
+            await retry(async () => client.writeFile(bucket, legacyKey(ref.fileName), absolutePath, getContentType(ref.fileName)));
             const stat = await fs.stat(absolutePath);
             report.uploaded.push({ fileName: ref.fileName, key: legacyKey(ref.fileName), bytes: stat.size });
         } catch (err) {
@@ -252,8 +244,8 @@ async function verifyR2(options) {
     for (const fileName of getMigrationFileNames(auditFile).filter((name) => !name.endsWith('.part'))) {
         const localStat = await fs.stat(path.join(auditFile.mediaDir, fileName));
         try {
-            const head = await client.send(new HeadObjectCommand({ Bucket: bucket, Key: legacyKey(fileName) }));
-            if (Number(head.ContentLength || 0) !== localStat.size) mismatched.push(fileName);
+            const head = await client.headObject(bucket, legacyKey(fileName));
+            if (Number(head.contentLength || 0) !== localStat.size) mismatched.push(fileName);
         } catch {
             missing.push(fileName);
         }
