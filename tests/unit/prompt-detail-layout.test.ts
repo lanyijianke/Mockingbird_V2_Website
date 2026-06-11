@@ -110,6 +110,101 @@ describe('prompt detail related cards layout', () => {
         expect(html).toContain('href="/ai/prompts?category=gpt-image-2"');
     });
 
+    it('renders the main prompt image as an enlargeable control', async () => {
+        const PromptDetailClient = (await import('@/app/ai/prompts/[id]/PromptDetailClient')).default;
+        const html = renderToStaticMarkup(
+            React.createElement(PromptDetailClient, {
+                images: ['https://assets.example/cat.jpg'],
+                content: 'Prompt text',
+                videoUrl: null,
+                backHref: '/ai/prompts',
+                title: 'Cat prompt',
+                categoryName: '图像生成',
+                description: '',
+                author: '',
+                copyCount: 12,
+                dateStr: '2026年6月11日',
+                sourceUrl: null,
+                isJson: false,
+                relatedPrompts: [],
+            })
+        );
+
+        expect(html).toContain('aria-label="放大查看图片"');
+        expect(html).toContain('pd-main-img-button');
+    });
+
+    it('does not show a missing-video note for image-only prompts', async () => {
+        const PromptDetailClient = (await import('@/app/ai/prompts/[id]/PromptDetailClient')).default;
+        const html = renderToStaticMarkup(
+            React.createElement(PromptDetailClient, {
+                images: ['https://assets.example/cat.jpg'],
+                content: 'Prompt text',
+                videoUrl: null,
+                backHref: '/ai/prompts',
+                title: 'Cat prompt',
+                categoryName: '图像生成',
+                description: '',
+                author: '',
+                copyCount: 12,
+                dateStr: '2026年6月11日',
+                sourceUrl: null,
+                isJson: false,
+                relatedPrompts: [],
+            })
+        );
+
+        expect(html).not.toContain('源数据暂未提供可播放视频');
+    });
+
+    it('renders Raycast argument templates as complete prompt text', async () => {
+        const { renderPromptTemplateDefaults } = await import('@/app/ai/prompts/prompt-template');
+
+        const rendered = renderPromptTemplateDefaults(
+            '我想看到 {argument name="subject" default="美丽的猫耳少女"} 奔向夏天。你能生成一张 {argument name="style" default="类似于 Niji-journey 的清晰数字插画"} 吗？'
+        );
+
+        expect(rendered).toBe('我想看到美丽的猫耳少女奔向夏天。你能生成一张类似于 Niji-journey 的清晰数字插画吗？');
+        expect(rendered).not.toContain('{argument');
+    });
+
+    it('leaves non-template braces untouched when rendering prompt defaults', async () => {
+        const { renderPromptTemplateDefaults } = await import('@/app/ai/prompts/prompt-template');
+
+        expect(renderPromptTemplateDefaults('Use {argument name="subject"} and keep {json: true}.')).toBe(
+            'Use {argument name="subject"} and keep {json: true}.'
+        );
+        expect(renderPromptTemplateDefaults("Use {argument name='subject' default='cat'} now.")).toBe('Use cat now.');
+    });
+
+    it('passes rendered prompt text to the detail page so display and copy use a complete prompt', async () => {
+        mockGetPromptById.mockResolvedValueOnce({
+            id: 42,
+            title: '游戏素材 - 猫耳少女数字插画',
+            description: '生成一张精美的人物角色。',
+            content: '我想看到 {argument name="subject" default="美丽的猫耳少女"} 奔向夏天。你能生成一张 {argument name="style" default="类似于 Niji-journey 的清晰数字插画"} 吗？',
+            category: 'gpt-image-2',
+            coverImageUrl: null,
+            videoPreviewUrl: null,
+            cardPreviewVideoUrl: null,
+            author: 'Kitten Kiki',
+            sourceUrl: null,
+            imagesJson: null,
+            copyCount: 781,
+            isActive: true,
+            createdAt: '2026-06-11T00:00:00.000Z',
+            updatedAt: null,
+        });
+
+        const { default: PromptDetailPage } = await import('@/app/ai/prompts/[id]/page');
+        const html = renderToStaticMarkup(await PromptDetailPage({
+            params: Promise.resolve({ id: '42' }),
+        }));
+
+        expect(html).toContain('我想看到美丽的猫耳少女奔向夏天。你能生成一张类似于 Niji-journey 的清晰数字插画吗？');
+        expect(html).not.toContain('{argument');
+    });
+
     it('links prompt exploration back to the filterable prompt list instead of SEO category pages', async () => {
         const { default: PromptDetailPage } = await import('@/app/ai/prompts/[id]/page');
         const html = renderToStaticMarkup(await PromptDetailPage({

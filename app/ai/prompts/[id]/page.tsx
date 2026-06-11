@@ -10,6 +10,7 @@ import {
 } from '@/lib/seo/schema';
 import PromptDetailClient from './PromptDetailClient';
 import { safeJsonParse } from '../safeJsonParse';
+import { renderPromptTemplateDefaults } from '../prompt-template';
 import './prompt-detail.css';
 
 export const runtime = 'nodejs';
@@ -106,8 +107,10 @@ export default async function PromptDetailPage({
         images = safeJsonParse<string[]>(prompt.imagesJson, []);
     }
 
+    const renderedPromptContent = renderPromptTemplateDefaults(prompt.content);
+
     // 检测是否为 JSON 内容
-    const isJson = prompt.content.trim().startsWith('{') || prompt.content.trim().startsWith('[');
+    const isJson = renderedPromptContent.trim().startsWith('{') || renderedPromptContent.trim().startsWith('[');
 
     const dateStr = new Date(prompt.createdAt).toLocaleDateString('zh-CN', {
         timeZone: 'Asia/Shanghai',
@@ -147,7 +150,7 @@ export default async function PromptDetailPage({
             />
             <PromptDetailClient
                 images={images}
-                content={prompt.content}
+                content={renderedPromptContent}
                 videoUrl={prompt.videoPreviewUrl}
                 backHref={backHref}
                 title={prompt.title}

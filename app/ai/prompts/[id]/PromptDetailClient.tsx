@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { safeJsonParse } from '../safeJsonParse';
@@ -63,6 +63,7 @@ export default function PromptDetailClient({
     explorationLinks = [],
 }: PromptDetailClientProps) {
     const [activeImage, setActiveImage] = useState(images[0] || '');
+    const [isLightboxOpen, setIsLightboxOpen] = useState(false);
     const [copied, setCopied] = useState(false);
 
     const handleCopy = useCallback(async () => {
@@ -82,6 +83,19 @@ export default function PromptDetailClient({
         }
     }
     const safeSourceUrl = sanitizeExternalUrl(sourceUrl);
+
+    useEffect(() => {
+        if (!isLightboxOpen) return;
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setIsLightboxOpen(false);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isLightboxOpen]);
 
     return (
         <div className="pd-container">
@@ -112,7 +126,12 @@ export default function PromptDetailClient({
                                 <span className="pd-image-badge">
                                     <i className="bi bi-image-fill" /> 仅封面图
                                 </span>
-                                <div className="pd-main-img">
+                                <button
+                                    type="button"
+                                    className="pd-main-img pd-main-img-button"
+                                    aria-label="放大查看图片"
+                                    onClick={() => setIsLightboxOpen(true)}
+                                >
                                     <Image
                                         src={activeImage}
                                         alt={title}
@@ -121,7 +140,10 @@ export default function PromptDetailClient({
                                         style={{ objectFit: 'contain' }}
                                         priority
                                     />
-                                </div>
+                                    <span className="pd-zoom-hint">
+                                        <i className="bi bi-arrows-fullscreen" />
+                                    </span>
+                                </button>
                                 {images.length > 1 && (
                                     <div className="pd-thumbs">
                                         {images.map((img, i) => (
@@ -136,7 +158,6 @@ export default function PromptDetailClient({
                                     </div>
                                 )}
                             </div>
-                            <p className="pd-media-note">源数据暂未提供可播放视频，当前仅展示封面图</p>
                         </>
                     ) : (
                         <div className="pd-showcase pd-empty glass">
@@ -267,6 +288,34 @@ export default function PromptDetailClient({
                         ))}
                     </div>
                 </section>
+            )}
+
+            {isLightboxOpen && activeImage && (
+                <div
+                    className="pd-lightbox"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="图片预览"
+                    onClick={() => setIsLightboxOpen(false)}
+                >
+                    <button
+                        type="button"
+                        className="pd-lightbox-close"
+                        aria-label="关闭图片预览"
+                        onClick={() => setIsLightboxOpen(false)}
+                    >
+                        <i className="bi bi-x-lg" />
+                    </button>
+                    <div className="pd-lightbox-frame" onClick={(event) => event.stopPropagation()}>
+                        <Image
+                            src={activeImage}
+                            alt={title}
+                            fill
+                            sizes="100vw"
+                            className="pd-lightbox-image"
+                        />
+                    </div>
+                </div>
             )}
         </div>
     );
