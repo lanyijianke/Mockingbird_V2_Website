@@ -296,11 +296,26 @@ html[data-theme='light'] .theme-logo-light {
   align-items: start;
 }
 
-.site-footer-title {
+.site-footer-name {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  letter-spacing: 0;
+}
+
+.site-footer-name-primary {
   font-family: var(--font-serif);
   font-size: 1.35rem;
-  line-height: 1.2;
+  font-weight: 800;
+  line-height: 1;
   color: var(--text-main);
+}
+
+.site-footer-name-secondary {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: var(--text-muted);
 }
 
 .site-footer-lockup {
@@ -402,6 +417,44 @@ html[data-theme='light'] .theme-logo-light {
     grid-template-columns: 1fr;
     gap: 1.15rem;
   }
+
+  /* 与顶部 nav 的 mobile 品牌样式保持一致 */
+  .site-footer-logo {
+    width: 1.55rem;
+    height: 1.55rem;
+  }
+
+  .site-footer-name {
+    gap: 0.32rem;
+  }
+
+  .site-footer-name-primary {
+    font-size: 1.05rem;
+  }
+
+  .site-footer-name-secondary {
+    font-size: 0.72rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .site-footer-name {
+    gap: 0.28rem;
+  }
+
+  .site-footer-name-primary {
+    font-size: 0.92rem;
+  }
+
+  .site-footer-name-secondary {
+    font-size: 0.6rem;
+    letter-spacing: -0.01em;
+  }
+
+  .site-footer-logo {
+    width: 1.4rem;
+    height: 1.4rem;
+  }
 }
 
 /* ═══════ Mobile Tab Bar ═══════ */
@@ -428,13 +481,15 @@ html[data-theme='light'] .theme-logo-light {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 2.8rem;
-  padding: 0.55rem 0.25rem;
-  border-radius: 999px;
+  flex-direction: column;
+  gap: 0.18rem;
+  min-height: 3.1rem;
+  padding: 0.45rem 0.25rem;
+  border-radius: 14px;
   color: var(--text-muted);
   text-decoration: none;
   font-family: var(--font-sans);
-  font-size: 0.82rem;
+  font-size: 0.74rem;
   font-weight: 600;
   letter-spacing: 0.01em;
   transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
@@ -449,6 +504,11 @@ html[data-theme='light'] .theme-logo-light {
   color: var(--primary);
   background: var(--theme-accent-soft);
   box-shadow: inset 0 0 0 1px var(--theme-accent-border);
+}
+
+.mobile-tab-icon {
+  font-size: 1.15rem;
+  line-height: 1;
 }
 
 .mobile-tab-label {

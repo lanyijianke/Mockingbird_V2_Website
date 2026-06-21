@@ -4,10 +4,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const ITEMS = [
-  { href: '/', label: '首页' },
-  { href: '/ai/articles', label: '文章' },
-  { href: '/ai/prompts', label: '提示词' },
-  { href: '/ai/rankings/github', label: '热榜' },
+  { href: '/', label: '首页', icon: 'bi-house-door' },
+  { href: '/ai/articles', label: '文章', icon: 'bi-journal-text' },
+  { href: '/ai/prompts', label: '提示词', icon: 'bi-chat-quote' },
+  { href: '/ai/rankings/github', label: '热榜', icon: 'bi-fire' },
 ];
 
 export default function MobileTabBar() {
@@ -25,6 +25,7 @@ export default function MobileTabBar() {
             className={`mobile-tab-item${active ? ' active' : ''}`}
             aria-current={active ? 'page' : undefined}
           >
+            <i className={`bi ${item.icon} mobile-tab-icon`} aria-hidden="true" />
             <span className="mobile-tab-label">{item.label}</span>
           </Link>
         );

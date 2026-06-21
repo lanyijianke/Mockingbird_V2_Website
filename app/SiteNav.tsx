@@ -3,14 +3,17 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 import { getArticleListPath } from '@/lib/articles/article-route-paths';
 import { isSkillMarketingPageEnabled } from '@/lib/agent-search/skill-page-config';
 import ThemeToggle from '@/app/ThemeToggle';
+import MobileMenu from '@/app/MobileMenu';
 
 const NAV_BRAND_NAME = '知更鸟 AI 知识库';
 
 export default function SiteNav() {
   const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isRootHome = pathname === '/';
   const isAbout = pathname.startsWith('/about');
@@ -66,11 +69,6 @@ export default function SiteNav() {
             <Link href="/ai/prompts" className="nav-link">提示词</Link>
             {skillMarketingPageEnabled && <Link href="/ai/skill" className="nav-link">Skill</Link>}
 
-            {/* Mobile: plain link */}
-            <Link href="/ai/rankings/github" className="nav-link nav-mobile-only">
-              热榜
-            </Link>
-
             {/* Desktop: dropdown */}
             <div className="nav-dropdown nav-desktop-only">
               <Link href="/ai/rankings/github" className="nav-link nav-dropdown-trigger">
@@ -102,7 +100,23 @@ export default function SiteNav() {
             <Link href={getArticleListPath('ai')} className="nav-link">AI</Link>
           </>
         )}
+
+        {/* ── Mobile hamburger ── */}
+        <button
+          type="button"
+          className={`nav-hamburger${mobileMenuOpen ? ' is-open' : ''}`}
+          onClick={() => setMobileMenuOpen(true)}
+          aria-label="打开导航菜单"
+          aria-expanded={mobileMenuOpen}
+          aria-controls="mobile-menu"
+        >
+          <span className="nav-hamburger-line" />
+          <span className="nav-hamburger-line" />
+          <span className="nav-hamburger-line" />
+        </button>
       </div>
+
+      <MobileMenu open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
     </nav>
   );
 }

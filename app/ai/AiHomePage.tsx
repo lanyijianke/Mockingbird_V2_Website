@@ -92,8 +92,8 @@ export default async function HomePage() {
   const heroArticle = articles.find(a => a.coverUrl && a.coverUrl !== '/images/default-cover.png') || articles[0];
   // Left column: next 2 articles
   const leftArticles = articles.filter(a => a !== heroArticle).slice(0, 2);
-  // Right column "Recent Essays": next 4 articles
-  const recentArticles = articles.filter(a => a !== heroArticle && !leftArticles.includes(a)).slice(0, 4);
+  // Right column "Recent Essays": next 7 articles (filled to roughly match left column height)
+  const recentArticles = articles.filter(a => a !== heroArticle && !leftArticles.includes(a)).slice(0, 7);
   // Group ALL articles by category for the category showcase (independent of editorial grid)
   const categoryGroups = new Map<string, typeof articles>();
   for (const article of articles) {

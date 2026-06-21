@@ -21,6 +21,12 @@ const SITE_LINKS = [
 
 export default function SiteFooter() {
   const brand = getSiteBrandConfig();
+  // 拆分品牌名以匹配顶部 nav 的「主名 serif + 副名 sans」视觉层次
+  // 例: brandName="知更鸟 AI 知识库", siteName="知更鸟" → primary="知更鸟", secondary="AI 知识库"
+  const primaryName = brand.siteName || brand.brandName;
+  const secondaryName = brand.brandName.startsWith(brand.siteName)
+    ? brand.brandName.slice(brand.siteName.length).trim()
+    : '';
 
   return (
     <footer className="site-footer">
@@ -47,7 +53,12 @@ export default function SiteFooter() {
                 unoptimized
               />
             </span>
-            <span className="site-footer-title">{brand.brandName}</span>
+            <span className="site-footer-name">
+              <span className="site-footer-name-primary">{primaryName}</span>
+              {secondaryName && (
+                <span className="site-footer-name-secondary">{secondaryName}</span>
+              )}
+            </span>
           </Link>
           <p className="site-footer-description">
             文章、提示词和工具热榜的长期收藏夹。
